@@ -30,8 +30,8 @@
 
 <h2>User Intention Capture</h2> 
 
-<div style="width: 95%; text-align: center; margin:auto;">
-      <img style="width: 95%" src="assets/case-intention.png">
+<div style="width: 90%; text-align: center; margin:auto;">
+      <img style="width: 90%" src="assets/case-intention.png">
 </div>
 <!-- ![world](assets/intro-tSNE.png)
 ![case](assets/case-intention.png) -->
