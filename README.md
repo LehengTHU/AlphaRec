@@ -30,14 +30,14 @@
 
 <h2>Rapid Convergence</h2> 
 
-<div style="width: 55%; text-align: center; margin:auto;">
-      <img style="width: 55%" src="assets/convergence.png">
+<div style="width: 50%; text-align: center; margin:auto;">
+      <img style="width: 50%" src="assets/convergence.png">
 </div>
 
 <h2>User Intention Capture</h2> 
 
-<div style="width: 80%; text-align: center; margin:auto;">
-      <img style="width: 80%" src="assets/case-intention.png">
+<div style="width: 70%; text-align: center; margin:auto;">
+      <img style="width: 70%" src="assets/case-intention.png">
 </div>
 <!-- ![world](assets/intro-tSNE.png)
 ![case](assets/case-intention.png) -->
