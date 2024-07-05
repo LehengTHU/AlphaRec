@@ -30,8 +30,8 @@
 
 <h2>User Intention Capture</h2> 
 
-<div style="width: 90%; text-align: center; margin:auto;">
-      <img style="width: 90%" src="assets/case-intention.png">
+<div style="width: 85%; text-align: center; margin:auto;">
+      <img style="width: 85%" src="assets/case-intention.png">
 </div>
 <!-- ![world](assets/intro-tSNE.png)
 ![case](assets/case-intention.png) -->
@@ -40,8 +40,14 @@
 </div>
 
 
-## Quick Start for AlphaRec
+## 📋 TODO 
 
+- [ ] Release user intention capture datasets.
+- [ ] ...
+
+## 👉 Quick Start for AlphaRec
+
+### Dependencies
 
 Our experiments have been tested on Python 3.9.12 with PyTorch 1.13.1+cu117. Python version over 3.10 may lead to some bugs in the package 'reckit'.
 
@@ -57,7 +63,7 @@ python setup.py build_ext --inplace
 popd
 ```
 
-## Dataset downloading
+### Dataset downloading
 
 Please download the datasets from the following anonymous link and put the unzipped dataset in the `data` folder:
 
@@ -72,7 +78,7 @@ Example of the file structure:
             ├── item_info/
 ```
 
-## Commands for running 
+### Commands for running 
 Books
 ```bash
 nohup python main.py --rs_type General --clear_checkpoints --saveID tau_0.15_v3_mlp_ --dataset amazon_book_2014 --model_name AlphaRec --n_layers 2 --patience 20 --cuda 0 --no_wandb --train_norm --pred_norm --neg_sample 256 --lm_model v3 --model_version mlp --tau 0.15 --infonce 1 &>logs/amazon_book_2014_tau_0.15_v3_mlp__2.log &
@@ -86,3 +92,9 @@ Games
 ```bash
 nohup python main.py --rs_type General --clear_checkpoints --saveID tau_0.2_v3_mlp_ --dataset amazon_game --model_name AlphaRec --n_layers 2 --patience 20 --cuda 2 --no_wandb --train_norm --pred_norm --neg_sample 256 --lm_model v3 --model_version mlp --tau 0.2 --infonce 1 &>logs/amazon_game_tau_0.2_v3_mlp__2.log &
 ```
+
+## Contact
+
+Please contact the first author of this paper for queries.
+
+- Leheng Sheng, leheng.sheng@u.nus.edu
