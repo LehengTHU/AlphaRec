@@ -33,7 +33,13 @@
 ## AlphaRec
 *"AlphaRec introduces a new text-based CF paradigm with several desirable advantages: **being easy to implement, lightweight, rapid convergence, superior zero-shot recommendation abilities in new domains, and being aware of user intention**."*
 
-<div style="display: flex; justify-content: center; align-items: center;">
+### Rapid Convergence & User Intention Capture
+<div style="width: 100%; text-align: center; margin:auto;">
+      <!-- <img style="width: 100%" src="assets/intro-tSNE.png"> -->
+    <img style="width: 100%" src="assets/convergence_intention.png">
+</div>
+
+<!-- <div style="display: flex; justify-content: center; align-items: center;">
   <div style="flex: 1; text-align: center;">
   <h3>Rapid Convergence</h3>
     <img style="width: 40%" src="assets/convergence.png">
@@ -44,7 +50,7 @@
     <img style="width: 60%" src="assets/case-intention.png">
     
   </div>
-</div>
+</div> -->
 
 <!-- <div align=center>
 <h2>Rapid Convergence</h2> 
