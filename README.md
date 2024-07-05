@@ -49,7 +49,7 @@
 
 ### Dependencies
 
-Our experiments have been tested on Python 3.9.12 with PyTorch 1.13.1+cu117. Python version over 3.10 may lead to some bugs in the package 'reckit'.
+Our experiments have been tested on Python 3.9.12 with PyTorch 1.13.1+cu117. 🛎️ Python version over 3.10 may lead to some bugs in the package 'reckit'.
 
 1. To install required packages, using the following command:
 ```bash
@@ -93,7 +93,7 @@ Games
 nohup python main.py --rs_type General --clear_checkpoints --saveID tau_0.2_v3_mlp_ --dataset amazon_game --model_name AlphaRec --n_layers 2 --patience 20 --cuda 2 --no_wandb --train_norm --pred_norm --neg_sample 256 --lm_model v3 --model_version mlp --tau 0.2 --infonce 1 &>logs/amazon_game_tau_0.2_v3_mlp__2.log &
 ```
 
-## Contact
+## ☎️ Contact
 
 Please contact the first author of this paper for queries.
 
