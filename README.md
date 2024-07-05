@@ -31,7 +31,7 @@
 </div>
 
 ## AlphaRec
-*AlphaRec introduces a new text-based CF paradigm with several desirable advantages: being easy to implement, lightweight, rapid convergence, superior zero-shot recommendation abilities in new domains, and being aware of user intention.*
+*"AlphaRec introduces a new text-based CF paradigm with several desirable advantages: **being easy to implement, lightweight, rapid convergence, superior zero-shot recommendation abilities in new domains, and being aware of user intention**."*
 
 <div style="display: flex; justify-content: center; align-items: center;">
   <div style="flex: 1; text-align: center;">
@@ -41,7 +41,7 @@
   </div>
   <div style="flex: 1; text-align: center;">
   <h3>User Intention Capture</h3>
-    <img style="width: 70%" src="assets/case-intention.png">
+    <img style="width: 60%" src="assets/case-intention.png">
     
   </div>
 </div>
