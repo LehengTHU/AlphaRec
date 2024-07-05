@@ -35,12 +35,14 @@
 
 <div style="display: flex; justify-content: center; align-items: center;">
   <div style="flex: 1; text-align: center;">
-    <img style="width: 50%" src="assets/convergence.png">
-    <h3>Rapid Convergence</h3>
+  <h3>Rapid Convergence</h3>
+    <img style="width: 40%" src="assets/convergence.png">
+    
   </div>
   <div style="flex: 1; text-align: center;">
-    <img style="width: 89%" src="assets/case-intention.png">
-    <h3>User Intention Capture</h3>
+  <h3>User Intention Capture</h3>
+    <img style="width: 70%" src="assets/case-intention.png">
+    
   </div>
 </div>
 
