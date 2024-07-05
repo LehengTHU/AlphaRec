@@ -71,6 +71,8 @@ https://drive.google.com/drive/folders/1iGKeTx3vqCtbeVdWkHOwgpbY3-s7QDy_?usp=sha
 
 Example of the file structure:
 ```
+├── assets/
+├── models/
 ├── data/
     ├── General/
         ├── amazon_movie/ # target datasets
