@@ -30,8 +30,8 @@
 
 <h2>Rapid Convergence</h2> 
 
-<div style="width: 80%; text-align: center; margin:auto;">
-      <img style="width: 80%" src="assets/convergence.png">
+<div style="width: 65%; text-align: center; margin:auto;">
+      <img style="width: 65%" src="assets/convergence.png">
 </div>
 
 <h2>User Intention Capture</h2> 
