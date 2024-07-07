@@ -31,7 +31,7 @@
 <!-- <h2>Linear Mapping Performance</h2>  -->
 <div style="width: 100%; text-align: center; margin:auto;">
       <!-- <img style="width: 100%" src="assets/intro-tSNE.png"> -->
-    <img style="width: 90%" src="assets/linear_mapping_performance.png">
+    <img style="width: 85%" src="assets/linear_mapping_performance.png">
 </div>
 
 </div>
@@ -42,9 +42,9 @@ By linear mapping the representations of language models (LMs), we can get a hom
 - The complicated user preference similarity may be implicitly encoded in language spaces, with a naive linear mapping matrix to activate.
 
 ## AlphaRec
-Exploring the potential of advanced language representations with leading collaborative filtering (CF) components.
+Exploring the potential of advanced language representations with leading collaborative filtering (CF) components (i.e., nonlinear projection, graph convolution, and contrastive learning objective).
 
-*"AlphaRec introduces a new text-based CF paradigm with several desirable advantages: **being easy to implement, lightweight, rapid convergence, superior zero-shot recommendation abilities in new domains, and being aware of user intention**."*
+*"AlphaRec introduces a new language-representation-based CF paradigm with several desirable advantages: **being easy to implement, lightweight, rapid convergence, superior zero-shot recommendation abilities in new domains, and being aware of user intention**."*
 
 ### Rapid Convergence & User Intention Capture
 <div style="width: 100%; text-align: center; margin:auto;">
