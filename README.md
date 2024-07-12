@@ -98,7 +98,8 @@ Exploring the potential of advanced language representations with leading collab
 
 Our experiments have been tested on Python 3.9.12 with PyTorch 1.13.1+cu117. 🛎️ Python version over 3.10 may lead to some bugs in the package 'reckit'.
 
-1. To install required packages, using the following command:
+1. Set up a virtualenv and install the [pytorch](https://pytorch.org/get-started/previous-versions/) manually. After that, install all the dependencies listed in the `requirements.txt` file by running the following command:
+
 ```bash
 pip install -r requirements.txt
 ```
