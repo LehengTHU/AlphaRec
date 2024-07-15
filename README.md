@@ -148,3 +148,16 @@ nohup python main.py --rs_type General --clear_checkpoints --saveID tau_0.2_v3_m
 Please contact the first author of this paper for queries.
 
 - Leheng Sheng, leheng.sheng@u.nus.edu
+
+## 🌟 Citation
+
+You can cite this paper as follows if you find our work helpful:
+
+```bibtex
+@article{AlphaRec,
+  title={Language Models Encode Collaborative Signals in Recommendation},
+  author={Sheng, Leheng and Zhang, An and Zhang, Yi and Chen, Yuxin and Wang, Xiang and Chua, Tat-Seng},
+  journal={arXiv preprint arXiv:2407.05441},
+  year={2024}
+}
+```
