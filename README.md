@@ -83,6 +83,10 @@ Exploring the potential of advanced language representations with leading collab
 </div>
 
 
+## ❓ How AlphaRec Interact with User Intentions?
+
+<https://github.com/LehengTHU/Assets/blob/master/AlphaRec/demo.mp4>
+
 
 
 
