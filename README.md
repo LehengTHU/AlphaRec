@@ -85,7 +85,8 @@ Exploring the potential of advanced language representations with leading collab
 
 ## ❓ How Does AlphaRec Interact with User Intentions?
 
-https://github.com/user-attachments/assets/733a9320-9329-4587-b2eb-a4033bf05fea
+
+https://github.com/user-attachments/assets/a77b4552-d144-4d7c-98c2-338a28c9a118
 
 
 ## 📋 TODO 
