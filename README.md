@@ -1,6 +1,6 @@
 <div align=center>
 
-<h1>Language Models Encode Collaborative Signals in Recommendation</h1>
+<h1>Language Representations Can be What Recommenders Need: Findings and Potentials</h1>
 
 <img src="https://img.shields.io/badge/License-MIT-blue" alt="license">
 
