@@ -49,7 +49,7 @@ class MultVAE_RS(AbstractRS):
         for batch_i, start_idx in pbar:          
             end_idx = min(start_idx + self.batch_size, n_users)
             batch = self.data.ui_mat[idxlist[start_idx:end_idx]]
-            batch = naive_sparse2tensor(batch).cuda(self.device)
+            batch = naive_sparse2tensor(batch).to(self.device)
 
             if self.total_anneal_steps > 0:
                 anneal = min(self.anneal_cap, 
@@ -164,7 +164,7 @@ class MultVAE(AbstractModel):
             items = list(range(self.data.n_items))
         
         batch = naive_sparse2tensor(self.data.ui_mat[users])
-        batch = batch.cuda(self.device)
+        batch = batch.to(self.device)
         rate_batch, _, _ = self.forward(batch)
 
         return rate_batch.cpu().detach().numpy()

@@ -20,7 +20,7 @@ class XSimGCL_RS(AbstractRS):
         pbar = tqdm(enumerate(self.data.train_loader), mininterval=2, total = len(self.data.train_loader))
         for batch_i, batch in pbar:          
             
-            batch = [x.cuda(self.device) for x in batch]
+            batch = [x.to(self.device) for x in batch]
             users, pos_items, users_pop, pos_items_pop = batch[0], batch[1], batch[2], batch[3]
 
             if self.args.infonce == 0 or self.args.neg_sample != -1:
@@ -63,7 +63,7 @@ class XSimGCL(AbstractModel):
         for layer in range(self.n_layers):
             all_emb = torch.sparse.mm(g_droped, all_emb)
             if perturbed:
-                random_noise = torch.rand_like(all_emb).cuda(self.device) # add noise
+                random_noise = torch.rand_like(all_emb).to(self.device) # add noise
                 all_emb += torch.sign(all_emb) * F.normalize(random_noise, dim=-1) * self.eps_XSimGCL
             embs.append(all_emb)
             if layer==self.layer_cl-1:
@@ -90,8 +90,8 @@ class XSimGCL(AbstractModel):
     
     def cal_cl_loss(self, idx, user_view1,user_view2,item_view1,item_view2):
         # 算的一个batch中的
-        u_idx = torch.unique(torch.Tensor(idx[0]).type(torch.long)).cuda(self.device)
-        i_idx = torch.unique(torch.Tensor(idx[1]).type(torch.long)).cuda(self.device)
+        u_idx = torch.unique(torch.Tensor(idx[0]).type(torch.long)).to(self.device)
+        i_idx = torch.unique(torch.Tensor(idx[1]).type(torch.long)).to(self.device)
         user_cl_loss = self.InfoNCE(user_view1[u_idx], user_view2[u_idx], self.temp_cl)
         item_cl_loss = self.InfoNCE(item_view1[i_idx], item_view2[i_idx], self.temp_cl)
         return user_cl_loss + item_cl_loss

@@ -25,7 +25,7 @@ class SGL_RS(AbstractRS):
         pbar = tqdm(enumerate(self.data.train_loader), mininterval=2, total = len(self.data.train_loader))
         for batch_i, batch in pbar:          
             
-            batch = [x.cuda(self.device) for x in batch]
+            batch = [x.to(self.device) for x in batch]
             users, pos_items, users_pop, pos_items_pop = batch[0], batch[1], batch[2], batch[3]
 
             if self.args.infonce == 0 or self.args.neg_sample != -1:
@@ -127,7 +127,7 @@ class SGL(AbstractModel):
         data = torch.FloatTensor(coo.data)
         enhanced_adj_mat = torch.sparse.FloatTensor(index, data, torch.Size(coo.shape))
 
-        return enhanced_adj_mat.coalesce().cuda(self.device)
+        return enhanced_adj_mat.coalesce().to(self.device)
 
     def InfoNCE(self, view1, view2, temperature, b_cos = True):
         if b_cos:
@@ -140,8 +140,8 @@ class SGL(AbstractModel):
         return torch.mean(cl_loss)
 
     def cal_cl_loss(self, idx, perturbed_mat1, perturbed_mat2):
-        u_idx = torch.unique(torch.Tensor(idx[0]).type(torch.long)).cuda(self.device)
-        i_idx = torch.unique(torch.Tensor(idx[1]).type(torch.long)).cuda(self.device)
+        u_idx = torch.unique(torch.Tensor(idx[0]).type(torch.long)).to(self.device)
+        i_idx = torch.unique(torch.Tensor(idx[1]).type(torch.long)).to(self.device)
         user_view_1, item_view_1 = self.compute(perturbed_mat1)
         user_view_2, item_view_2 = self.compute(perturbed_mat2)
         # view1 = torch.cat((user_view_1[u_idx],item_view_1[i_idx]),0)

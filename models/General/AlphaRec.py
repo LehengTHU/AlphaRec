@@ -25,7 +25,7 @@ class AlphaRec_RS(AbstractRS):
         pbar = tqdm(enumerate(self.data.train_loader), mininterval=2, total = len(self.data.train_loader))
         for batch_i, batch in pbar:          
             
-            batch = [x.cuda(self.device) for x in batch]
+            batch = [x.to(self.device) for x in batch]
             users, pos_items, users_pop, pos_items_pop  = batch[0], batch[1], batch[2], batch[3]
 
             if self.args.infonce == 0 or self.args.neg_sample != -1:
@@ -101,8 +101,8 @@ class AlphaRec(AbstractModel):
         self.init_user_cf_embeds = data.user_cf_embeds
         self.init_item_cf_embeds = data.item_cf_embeds
 
-        self.init_user_cf_embeds = torch.tensor(self.init_user_cf_embeds, dtype=torch.float32).cuda(self.device)
-        self.init_item_cf_embeds = torch.tensor(self.init_item_cf_embeds, dtype=torch.float32).cuda(self.device)
+        self.init_user_cf_embeds = torch.tensor(self.init_user_cf_embeds, dtype=torch.float32).to(self.device)
+        self.init_item_cf_embeds = torch.tensor(self.init_item_cf_embeds, dtype=torch.float32).to(self.device)
 
         self.init_embed_shape = self.init_user_cf_embeds.shape[1]
         
@@ -189,8 +189,8 @@ class AlphaRec(AbstractModel):
 
         all_users, all_items = self.compute()
         
-        users = all_users[torch.tensor(users).cuda(self.device)]
-        items = all_items[torch.tensor(items).cuda(self.device)]
+        users = all_users[torch.tensor(users).to(self.device)]
+        items = all_items[torch.tensor(items).to(self.device)]
         
         if(self.pred_norm == True):
             users = F.normalize(users, dim = -1)

@@ -86,7 +86,7 @@ class AbstractData:
             self.test_neg_file = self.path + 'test_neg.txt'
         self.batch_size = args.batch_size
         self.neg_sample = args.neg_sample
-        self.device = torch.device(args.cuda)
+        self.device = torch.device(f"cuda:{args.cuda}" if args.cuda != -1 and torch.cuda.is_available() else "cpu")
         self.model_name = args.model_name
 
         self.user_pop_max = 0
@@ -378,7 +378,7 @@ class AbstractData:
                 print(f"costing {end - s}s, saved norm_mat...")
                 sp.save_npz(self.path + '/s_pre_adj_mat.npz', norm_adj)
             self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
-            self.Graph = self.Graph.coalesce().cuda(self.device)
+            self.Graph = self.Graph.coalesce().to(self.device)
 
         return self.Graph
 
