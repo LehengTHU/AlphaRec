@@ -134,6 +134,10 @@ class AlphaRec(AbstractModel):
             self.mlp = nn.Sequential(
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
+            if self.random_user_emb:
+                self.mlp_user = nn.Sequential(
+                    nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                )
 
         else:  # MLP
             self.mlp = nn.Sequential(
@@ -142,12 +146,17 @@ class AlphaRec(AbstractModel):
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
             )
 
+            if self.random_user_emb:
+                self.mlp_user = nn.Sequential(
+                    nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                )
+
     def init_embedding(self):
         pass
 
     def compute(self):
         users_cf_emb = self.mlp(self.init_user_cf_embeds) if not self.random_user_emb \
-            else self.mlp(self.init_user_cf_embeds.weight)
+            else self.mlp_user(self.init_user_cf_embeds.weight)
 
         items_cf_emb = self.mlp(self.init_item_cf_embeds)
 
