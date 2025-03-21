@@ -103,7 +103,7 @@ class AlphaRecUserEmb(AbstractModel):
         self.init_item_cf_embeds = torch.tensor(self.init_item_cf_embeds, dtype=torch.float32).to(self.device)
 
         # self.init_embed_shape = self.init_user_cf_embeds.shape[1]
-        self.init_embed_shape = self.init_item_cf_embeds.shape[1] # TODO: is it okay?
+        self.init_embed_shape = self.init_item_cf_embeds.shape[1]  # TODO: is it okay?
 
         # To keep the same parameter size
         multiplier_dict = {
@@ -163,6 +163,7 @@ class AlphaRecUserEmb(AbstractModel):
         all_users, all_items = self.compute()
 
         users_emb = all_users[users]
+        userEmb0 = self.embed_user(users)
         pos_emb = all_items[pos_items]
         neg_emb = all_items[neg_items]
 
@@ -181,7 +182,11 @@ class AlphaRecUserEmb(AbstractModel):
 
         ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
 
-        return ssm_loss
+        regularizer = 0.5 * torch.norm(userEmb0) ** 2
+        regularizer = regularizer / self.batch_size
+        reg_loss = self.decay * regularizer
+
+        return ssm_loss + reg_loss
 
     @torch.no_grad()
     def predict(self, users, items=None):
