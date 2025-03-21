@@ -163,7 +163,7 @@ class AlphaRecUserEmb(AbstractModel):
         all_users, all_items = self.compute()
 
         users_emb = all_users[users]
-        userEmb0 = self.embed_user(users)
+        # userEmb0 = self.embed_user(users)
         pos_emb = all_items[pos_items]
         neg_emb = all_items[neg_items]
 
@@ -182,11 +182,11 @@ class AlphaRecUserEmb(AbstractModel):
 
         ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
 
-        regularizer = 0.5 * torch.norm(userEmb0) ** 2
-        regularizer = regularizer / self.batch_size
-        reg_loss = self.decay * regularizer
+        # regularizer = 0.5 * torch.norm(userEmb0) ** 2
+        # regularizer = regularizer / self.batch_size
+        # reg_loss = self.decay * regularizer
 
-        return ssm_loss + reg_loss
+        return ssm_loss #+ reg_loss
 
     @torch.no_grad()
     def predict(self, users, items=None):

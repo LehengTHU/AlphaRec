@@ -21,7 +21,7 @@ def parse_args():
                         help='Whether clear the earlier checkpoints.')
     parser.add_argument('--saveID', type=str, default='Saved',
                         help='Specify model save path. Description of the experiment')
-    
+
     parser.add_argument('--seed', type=int, default=101,
                         help='Random seed.')
     parser.add_argument('--max_epoch', type=int, default=500,
@@ -79,8 +79,8 @@ def parse_args():
         parser.add_argument('--max2keep', type=int, default=1,
                             help='max checkpoints to keep')
         args, _ = parser.parse_known_args()
-        
-        
+
+
         # InfoNCE
         if(args.model_name == 'InfoNCE'):
             parser.add_argument('--tau', type=float, default=0.1,
@@ -96,7 +96,7 @@ def parse_args():
                                 help='Learning rate for adversarial training.')
             parser.add_argument('--model_version', type=str, default='embed',
                                 help='model type, mlp or embed')
-            
+
             parser.add_argument('--adv_interval',type=int,default=5,
                                 help='the interval of adversarial training')
             parser.add_argument('--warm_up_epochs', type=int, default=0,
@@ -107,7 +107,7 @@ def parse_args():
                                 help='the epoch of adversarial training')
             parser.add_argument('--w_embed_size',type=int,default=64,
                                 help='dimension of weight embedding')
-        
+
         # MultVAE
         if(args.model_name == 'MultVAE'):
             parser.add_argument('--total_anneal_steps', type=int, default=200000,
@@ -129,11 +129,13 @@ def parse_args():
             parser.add_argument('--model_version', type=str, default='homo',
                         choices=['mlp', 'homo'],
                         help='The mapping method')
+            parser.add_argument('--random_user_emb',action='store_true',
+                        help='Use random user embeddings instead of averaging items (default: False)')
 
         if('LIntCF' in args.model_name):
             parser.add_argument('--tau', type=float, default=0.1,
                             help='temperature parameter')
-            
+
             parser.add_argument('--lambda_cl', type=float, default=1,
                                     help='Rate of contrastive loss')
             parser.add_argument('--temp_cl', type=float, default=0.15,
@@ -155,7 +157,7 @@ def parse_args():
         if(args.model_name == 'SimpleX'):
             parser.add_argument('--w_neg', type=float, default=1)
             parser.add_argument('--neg_margin',type=float, default=0.4)
-        
+
         # SGL
         if(args.model_name == 'SGL'):
             parser.add_argument('--lambda_cl', type=float, default=0.2,
@@ -181,7 +183,7 @@ def parse_args():
                             help='temperature parameter')
             parser.add_argument('--kd_weight', type=float, default=1e-2,
                             help='kd_weight')
-            
+
 
     if(args.rs_type == 'Seq'):
         parser.add_argument('--r_click', type=float, default=0.2,
@@ -215,7 +217,7 @@ def parse_args():
                         help='path to llm model')
         parser.add_argument('--micro_batch_size', type=int, default=32,
                         help='micro batch size')
-        
+
         args, _ = parser.parse_known_args()
 
         if(args.model_name == 'RecInt'):
@@ -232,7 +234,7 @@ def parse_args():
             # SASRec
             parser.add_argument('--num_heads', type=int, default=1,
                                 help='num_heads')
-            
+
         if(args.model_name == 'TALLRec'):
             parser.add_argument('--sample_num', type=int, default=64,
                                 help='Sample number for training')
@@ -246,7 +248,7 @@ def parse_args():
     args_full, _ = parser.parse_known_args()
     special_args = list(set(vars(args_full).keys()) - set(vars(args).keys()))
     special_args.sort()
-    
+
     if(args.model_name == 'UniSRec'):
         args_full.n_layers = 2
         args_full.n_heads = 2
