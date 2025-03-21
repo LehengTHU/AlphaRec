@@ -95,7 +95,6 @@ class AlphaRecUserEmb(AbstractModel):
         self.embed_size = args.hidden_size
         self.lm_model = args.lm_model
         self.model_version = args.model_version
-
         # self.init_user_cf_embeds = data.user_cf_embeds
         self.init_item_cf_embeds = data.item_cf_embeds
 
@@ -123,11 +122,21 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
 
+            #TODO: add bool argument to define whether apply it or not
+            self.mlp_user = nn.Sequential(
+                nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
+            )
+
         else:  # MLP
             self.mlp = nn.Sequential(
                 nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
                 nn.LeakyReLU(),
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+            )
+
+
+            self.mlp_user = nn.Sequential(
+                nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
             )
 
     def init_embedding(self):
@@ -140,7 +149,7 @@ class AlphaRecUserEmb(AbstractModel):
         items_cf_emb = self.mlp(self.init_item_cf_embeds)
 
         # users_emb = users_cf_emb
-        users_emb = self.embed_user.weight
+        users_emb = self.mlp_user(self.embed_user.weight)
         items_emb = items_cf_emb
 
         all_emb = torch.cat([users_emb, items_emb])
@@ -186,7 +195,7 @@ class AlphaRecUserEmb(AbstractModel):
         # regularizer = regularizer / self.batch_size
         # reg_loss = self.decay * regularizer
 
-        return ssm_loss #+ reg_loss
+        return ssm_loss  # + reg_loss
 
     @torch.no_grad()
     def predict(self, users, items=None):
