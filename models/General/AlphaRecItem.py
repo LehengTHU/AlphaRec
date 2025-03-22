@@ -237,7 +237,9 @@ class AlphaRecItem(AbstractModel):
             )
 
             self.mlp_user = nn.Sequential(
-                nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
+                nn.Linear(self.init_embed_shape, self.init_embed_shape),
+                nn.LeakyReLU(),
+                nn.Linear(self.init_embed_shape, self.embed_size)
             )
 
     def init_embedding(self):
