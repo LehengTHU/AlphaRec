@@ -163,7 +163,8 @@ class AlphaRecItem_Data(AlphaRec_Data):
                     sp.save_npz(self.path + f'/s_pre_adj_mat_{type}.npz', norm_adj)
                     return norm_adj
 
-                print("generating adjacency matrix, only for items")
+                # print("generating adjacency matrix, only for items")
+                print("generating adjacency matrix, user + items")
                 s = time.time()
                 # adj_mat = sp.dok_matrix((self.n_users + self.n_items, self.n_users + self.n_items), dtype=np.float32)
                 # adj_mat = adj_mat.tolil()
@@ -224,7 +225,7 @@ class AlphaRecItem(AbstractModel):
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
 
-            # TODO: add bool argument to define whether apply it or not
+            # TODO: add boolean argument to define whether apply it or not
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
             )

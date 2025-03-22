@@ -90,6 +90,7 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
 
 class AlphaRecUserEmb(AbstractModel):
     def __init__(self, args, data) -> None:
+        self.multiplier_user_embed_dim = 4
         super().__init__(args, data)
         self.tau = args.tau
         self.embed_size = args.hidden_size
@@ -124,7 +125,7 @@ class AlphaRecUserEmb(AbstractModel):
 
             #TODO: add bool argument to define whether apply it or not
             self.mlp_user = nn.Sequential(
-                nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
+                nn.Linear(self.multiplier_user_embed_dim*self.emb_dim, self.embed_size, bias=False)  # homo
             )
 
         else:  # MLP
@@ -136,15 +137,15 @@ class AlphaRecUserEmb(AbstractModel):
 
 
             self.mlp_user = nn.Sequential(
-                nn.Linear(self.embed_size,  2*self.embed_size),
+                nn.Linear(self.multiplier_user_embed_dim*self.emb_dim, self.multiplier_user_embed_dim*self.emb_dim),
                 nn.LeakyReLU(),
-                nn.Linear(2*self.embed_size, self.embed_size)
+                nn.Linear(self.multiplier_user_embed_dim*self.emb_dim,  self.embed_size)
             )
 
 
     def init_embedding(self):
         # only for users
-        self.embed_user = nn.Embedding(self.data.n_users, self.emb_dim)
+        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim*self.emb_dim)
         nn.init.xavier_normal_(self.embed_user.weight)
 
     def compute(self):
