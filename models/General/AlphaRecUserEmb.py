@@ -149,7 +149,8 @@ class AlphaRecUserEmb(AbstractModel):
         items_cf_emb = self.mlp(self.init_item_cf_embeds)
 
         # users_emb = users_cf_emb
-        users_emb = self.mlp_user(self.embed_user.weight)
+        # users_emb = self.mlp_user(self.embed_user.weight)
+        users_emb = self.mlp(self.embed_user.weight)
         items_emb = items_cf_emb
 
         all_emb = torch.cat([users_emb, items_emb])
