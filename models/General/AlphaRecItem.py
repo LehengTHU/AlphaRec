@@ -88,15 +88,81 @@ class AlphaRecItem_Data(AlphaRec_Data):
         # user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
         #
         # self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))
-    def getSparseGraph(self):
 
+    # def getSparseGraph(self):
+    #
+    #     if self.Graph is None:
+    #         try:
+    #             pre_adj_mat = sp.load_npz(self.path + '/s_pre_adj_mat_items.npz')
+    #             print("finish loading adjacency matrix, only for items")
+    #             norm_adj = pre_adj_mat
+    #         # If there is no preprocessed adjacency matrix, generate one.
+    #         except:
+    #             print("generating adjacency matrix, only for items")
+    #             s = time.time()
+    #             # adj_mat = sp.dok_matrix((self.n_users + self.n_items, self.n_users + self.n_items), dtype=np.float32)
+    #             # adj_mat = adj_mat.tolil()
+    #             self.trainItem = np.array(self.trainItem)
+    #             self.trainUser = np.array(self.trainUser)
+    #             self.UserItemNet = csr_matrix((np.ones(len(self.trainUser)), (self.trainUser, self.trainItem)),
+    #                                             shape=(self.n_users, self.n_items))
+    #             R = self.UserItemNet.tolil()
+    #             adj_mat = R.T @ R
+    #             # adj_mat[:self.n_users, self.n_users:] = R
+    #             # adj_mat[self.n_users:, :self.n_users] = R.T
+    #             adj_mat = adj_mat.tocsr()
+    #             sp.save_npz(self.path + '/adj_mat_items.npz', adj_mat)
+    #             print("successfully saved adj_mat...")
+    #
+    #             adj_mat = adj_mat.todok()
+    #
+    #             rowsum = np.array(adj_mat.sum(axis=1))
+    #             d_inv = np.power(rowsum, -0.5).flatten()
+    #             d_inv[np.isinf(d_inv)] = 0.
+    #             d_mat = sp.diags(d_inv)
+    #
+    #             norm_adj = d_mat.dot(adj_mat)
+    #             norm_adj = norm_adj.dot(d_mat)
+    #             norm_adj = norm_adj.tocsr()
+    #             end = time.time()
+    #             print(f"costing {end - s}s, saved norm_mat...")
+    #             sp.save_npz(self.path + '/s_pre_adj_mat_items.npz', norm_adj)
+    #         self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
+    #         self.Graph = self.Graph.coalesce().to(self.device)
+    #
+    #     return self.Graph
+
+    def getSparseGraph(self):
         if self.Graph is None:
             try:
                 pre_adj_mat = sp.load_npz(self.path + '/s_pre_adj_mat_items.npz')
                 print("finish loading adjacency matrix, only for items")
-                norm_adj = pre_adj_mat
+                norm_adj_items = pre_adj_mat
+
+                pre_adj_mat = sp.load_npz(self.path + '/s_pre_adj_mat_users.npz')
+                print("finish loading adjacency matrix, only for users")
+                norm_adj_users = pre_adj_mat
             # If there is no preprocessed adjacency matrix, generate one.
             except:
+                def process_adj_matrix(adj_mat, type: str):
+                    assert type in ['users', 'items']
+                    adj_mat = adj_mat.tocsr()
+                    sp.save_npz(self.path + f'/adj_mat_{type}.npz', adj_mat)
+                    print(f"successfully saved adj_mat {type} ...")
+
+                    adj_mat = adj_mat.todok()
+
+                    rowsum = np.array(adj_mat.sum(axis=1))
+                    d_inv = np.power(rowsum, -0.5).flatten()
+                    d_inv[np.isinf(d_inv)] = 0.
+                    d_mat = sp.diags(d_inv)
+
+                    norm_adj = d_mat.dot(adj_mat)
+                    norm_adj = norm_adj.dot(d_mat)
+                    norm_adj = norm_adj.tocsr()
+                    sp.save_npz(self.path + f'/s_pre_adj_mat_{type}.npz', norm_adj)
+                    return norm_adj
+
                 print("generating adjacency matrix, only for items")
                 s = time.time()
                 # adj_mat = sp.dok_matrix((self.n_users + self.n_items, self.n_users + self.n_items), dtype=np.float32)
@@ -104,32 +170,25 @@ class AlphaRecItem_Data(AlphaRec_Data):
                 self.trainItem = np.array(self.trainItem)
                 self.trainUser = np.array(self.trainUser)
                 self.UserItemNet = csr_matrix((np.ones(len(self.trainUser)), (self.trainUser, self.trainItem)),
-                                                shape=(self.n_users, self.n_items))
+                                              shape=(self.n_users, self.n_items))
                 R = self.UserItemNet.tolil()
-                adj_mat = R.T @ R
+                adj_mat_items = R.T @ R
+                adj_mat_users = R @ R.T
                 # adj_mat[:self.n_users, self.n_users:] = R
                 # adj_mat[self.n_users:, :self.n_users] = R.T
-                adj_mat = adj_mat.tocsr()
-                sp.save_npz(self.path + '/adj_mat_items.npz', adj_mat)
-                print("successfully saved adj_mat...")
-
-                adj_mat = adj_mat.todok()
-
-                rowsum = np.array(adj_mat.sum(axis=1))
-                d_inv = np.power(rowsum, -0.5).flatten()
-                d_inv[np.isinf(d_inv)] = 0.
-                d_mat = sp.diags(d_inv)
-
-                norm_adj = d_mat.dot(adj_mat)
-                norm_adj = norm_adj.dot(d_mat)
-                norm_adj = norm_adj.tocsr()
+                norm_adj_items = process_adj_matrix(adj_mat_items, 'items')
+                norm_adj_users = process_adj_matrix(adj_mat_users, 'users')
                 end = time.time()
-                print(f"costing {end - s}s, saved norm_mat...")
-                sp.save_npz(self.path + '/s_pre_adj_mat_items.npz', norm_adj)
-            self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
-            self.Graph = self.Graph.coalesce().to(self.device)
+                print(f"costing {end - s}s, saved norm_mat separately for users and items ...")
 
-        return self.Graph
+            self.Graph_items = self._convert_sp_mat_to_sp_tensor(norm_adj_items)
+            self.Graph_items = self.Graph_items.coalesce().to(self.device)
+
+            self.Graph_users = self._convert_sp_mat_to_sp_tensor(norm_adj_users)
+            self.Graph_users = self.Graph_users.coalesce().to(self.device)
+
+        return [self.Graph_items, self.Graph_users]
+
 
 class AlphaRecItem(AbstractModel):
     def __init__(self, args, data) -> None:
@@ -165,7 +224,7 @@ class AlphaRecItem(AbstractModel):
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
 
-            #TODO: add bool argument to define whether apply it or not
+            # TODO: add bool argument to define whether apply it or not
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
             )
@@ -177,7 +236,6 @@ class AlphaRecItem(AbstractModel):
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
             )
 
-
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
             )
@@ -187,28 +245,50 @@ class AlphaRecItem(AbstractModel):
         self.embed_user = nn.Embedding(self.data.n_users, self.emb_dim)
         nn.init.xavier_normal_(self.embed_user.weight)
 
+    # def compute(self):
+    #     # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
+    #     items_cf_emb = self.mlp(self.init_item_cf_embeds)
+    #
+    #     # users_emb = users_cf_emb
+    #     users_emb = self.mlp_user(self.embed_user.weight)
+    #     items_emb = items_cf_emb
+    #
+    #     # all_emb = torch.cat([users_emb, items_emb])
+    #
+    #     embs = [items_emb]
+    #     g_droped = self.Graph
+    #
+    #     for layer in range(self.n_layers):
+    #         items_emb = torch.sparse.mm(g_droped, items_emb)
+    #         embs.append(items_emb)
+    #     embs = torch.stack(embs, dim=1)
+    #
+    #     items = torch.mean(embs, dim=1)
+    #     # users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
+    #
+    #     return users_emb, items
+
     def compute(self):
+        def GCN(embs, g_droped):
+            stack_embs = [embs]
+            for layer in range(self.n_layers):
+                embs = torch.sparse.mm(g_droped, embs)
+                stack_embs.append(embs)
+            stack_embs = torch.stack(stack_embs, dim=1)
+
+            light_out = torch.mean(stack_embs, dim=1)
+            return light_out
+
         # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
         items_cf_emb = self.mlp(self.init_item_cf_embeds)
 
         # users_emb = users_cf_emb
         users_emb = self.mlp_user(self.embed_user.weight)
         items_emb = items_cf_emb
-
-        # all_emb = torch.cat([users_emb, items_emb])
-
-        embs = [items_emb]
-        g_droped = self.Graph
-
-        for layer in range(self.n_layers):
-            items_emb = torch.sparse.mm(g_droped, items_emb)
-            embs.append(items_emb)
-        embs = torch.stack(embs, dim=1)
-
-        items = torch.mean(embs, dim=1)
-        # users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
-
-        return users_emb, items
+        g_droped_items, g_droped_users = self.Graph[0], self.Graph[1]
+        items = GCN(items_emb, g_droped_items)
+        users = GCN(users_emb, g_droped_users)
+        return users, items
 
     def forward(self, users, pos_items, neg_items):
 
