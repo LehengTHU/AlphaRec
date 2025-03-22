@@ -136,10 +136,11 @@ class AlphaRecUserEmb(AbstractModel):
 
 
             self.mlp_user = nn.Sequential(
-                nn.Linear(self.init_embed_shape, self.init_embed_shape),
+                nn.Linear(self.embed_size,  2*self.embed_size),
                 nn.LeakyReLU(),
-                nn.Linear(self.init_embed_shape, self.embed_size)
+                nn.Linear(2*self.embed_size, self.embed_size)
             )
+
 
     def init_embedding(self):
         # only for users
