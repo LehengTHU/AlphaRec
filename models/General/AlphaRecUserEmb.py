@@ -9,6 +9,8 @@ from tqdm import tqdm
 
 from .base.utils import *
 
+from .MoE import MoE
+
 
 class AlphaRecUserEmb_RS(AlphaRec_RS):
     def __init__(self, args, special_args) -> None:
@@ -123,9 +125,9 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
 
-            #TODO: add bool argument to define whether apply it or not
+            # TODO: add bool argument to define whether apply it or not
             self.mlp_user = nn.Sequential(
-                nn.Linear(self.multiplier_user_embed_dim*self.emb_dim, self.embed_size, bias=False)  # homo
+                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo
             )
 
         else:  # MLP
@@ -135,17 +137,26 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
             )
 
+            #
+            # self.mlp_user = nn.Sequential(
+            #     nn.Linear(self.multiplier_user_embed_dim*self.emb_dim, self.multiplier_user_embed_dim*self.emb_dim),
+            #     nn.LeakyReLU(),
+            #     nn.Linear(self.multiplier_user_embed_dim*self.emb_dim,  self.embed_size)
+            self.mlp_user = MoE(d_in=self.multiplier_user_embed_dim * self.embed_size, d_out=self.embed_size,
+                                n_blocks=1, d_block=4*self.multiplier_user_embed_dim * self.embed_size,
+                                dropout=None, activation='LeakyReLU', gating_type='gumbel',
+                                d_block_per_expert=self.multiplier_user_embed_dim * self.embed_size // 2,
+                                default_num_samples=10, tau=1.0)
 
-            self.mlp_user = nn.Sequential(
-                nn.Linear(self.multiplier_user_embed_dim*self.emb_dim, self.multiplier_user_embed_dim*self.emb_dim),
-                nn.LeakyReLU(),
-                nn.Linear(self.multiplier_user_embed_dim*self.emb_dim,  self.embed_size)
-            )
+        print('mlp:')
+        print(self.mlp)
 
+        print('mlp user:')
+        print(self.mlp_user)
 
     def init_embedding(self):
         # only for users
-        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim*self.emb_dim)
+        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim)
         nn.init.xavier_normal_(self.embed_user.weight)
 
     def compute(self):
