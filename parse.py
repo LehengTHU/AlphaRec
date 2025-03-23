@@ -129,6 +129,11 @@ def parse_args():
             parser.add_argument('--model_version', type=str, default='homo',
                         choices=['mlp', 'homo'],
                         help='The mapping method')
+
+            parser.add_argument('--user_model_version', type=str, default='mlp',
+                                choices=['mlp', 'homo'],
+                                help='The mapping method for users')
+
             parser.add_argument('--random_user_emb',action='store_true',
                         help='Use random user embeddings instead of averaging items (default: False)')
 

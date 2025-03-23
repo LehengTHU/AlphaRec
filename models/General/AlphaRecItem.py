@@ -198,6 +198,7 @@ class AlphaRecItem(AbstractModel):
         self.embed_size = args.hidden_size
         self.lm_model = args.lm_model
         self.model_version = args.model_version
+        self.user_model_version = args.user_model_version
         # self.init_user_cf_embeds = data.user_cf_embeds
         self.init_item_cf_embeds = data.item_cf_embeds
 
@@ -225,11 +226,6 @@ class AlphaRecItem(AbstractModel):
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
 
-            # TODO: add boolean argument to define whether apply it or not
-            self.mlp_user = nn.Sequential(
-                nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
-            )
-
         else:  # MLP
             self.mlp = nn.Sequential(
                 nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
@@ -237,13 +233,16 @@ class AlphaRecItem(AbstractModel):
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
             )
 
-
+        if self.model_version == 'homo':
             self.mlp_user = nn.Sequential(
-                nn.Linear(self.embed_size,  2*self.embed_size),
-                nn.LeakyReLU(),
-                nn.Linear(2*self.embed_size, self.embed_size)
+                nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
             )
-
+        else:
+            self.mlp_user = nn.Sequential(
+                nn.Linear(self.embed_size, 2 * self.embed_size),
+                nn.LeakyReLU(),
+                nn.Linear(2 * self.embed_size, self.embed_size)
+            )
 
     def init_embedding(self):
         # only for users
