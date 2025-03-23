@@ -1,5 +1,8 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import scipy.sparse as sp
+from scipy.sparse import csr_matrix
+from sklearn.decomposition import TruncatedSVD
 
 from .base.abstract_model import AbstractModel
 from .base.abstract_RS import AbstractRS
@@ -46,6 +49,7 @@ class AlphaRecUserEmb_RS(AlphaRec_RS):
 class AlphaRecUserEmb_Data(AlphaRec_Data):
     def __init__(self, args):
         super().__init__(args)
+        self.user_embedding = None
 
     def add_special_model_attr(self, args):
         self.lm_model = args.lm_model
@@ -88,6 +92,50 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
         # user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
         #
         # self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))
+
+    def getSparseGraph(self):
+
+        if self.Graph is None:
+            try:
+                pre_adj_mat = sp.load_npz(self.path + '/s_pre_adj_mat.npz')
+                print("finish loading adjacency matrix")
+                norm_adj = pre_adj_mat
+            # If there is no preprocessed adjacency matrix, generate one.
+            except:
+                print("generating adjacency matrix")
+                s = time.time()
+                adj_mat = sp.dok_matrix((self.n_users + self.n_items, self.n_users + self.n_items), dtype=np.float32)
+                adj_mat = adj_mat.tolil()
+                self.trainItem = np.array(self.trainItem)
+                self.trainUser = np.array(self.trainUser)
+                self.UserItemNet = csr_matrix((np.ones(len(self.trainUser)), (self.trainUser, self.trainItem)),
+                                              shape=(self.n_users, self.n_items))
+                R = self.UserItemNet.tolil()
+                adj_mat[:self.n_users, self.n_users:] = R
+                adj_mat[self.n_users:, :self.n_users] = R.T
+                adj_mat = adj_mat.tocsr()
+                sp.save_npz(self.path + '/adj_mat.npz', adj_mat)
+                print("successfully saved adj_mat...")
+
+                adj_mat = adj_mat.todok()
+
+                rowsum = np.array(adj_mat.sum(axis=1))
+                d_inv = np.power(rowsum, -0.5).flatten()
+                d_inv[np.isinf(d_inv)] = 0.
+                d_mat = sp.diags(d_inv)
+
+                norm_adj = d_mat.dot(adj_mat)
+                norm_adj = norm_adj.dot(d_mat)
+                norm_adj = norm_adj.tocsr()
+                end = time.time()
+                print(f"costing {end - s}s, saved norm_mat...")
+                sp.save_npz(self.path + '/s_pre_adj_mat.npz', norm_adj)
+            self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
+            self.Graph = self.Graph.coalesce().to(self.device)
+
+
+        return self.Graph
+
 
 
 class AlphaRecUserEmb(AbstractModel):
@@ -154,9 +202,25 @@ class AlphaRecUserEmb(AbstractModel):
         print(self.mlp_user)
 
     def init_embedding(self):
+        UserItemNet = csr_matrix((np.ones(len(self.data.trainUser)), (self.data.trainUser, self.data.trainItem)),
+                                      shape=(self.data.n_users, self.data.n_items))
+
         # only for users
-        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim)
-        nn.init.xavier_normal_(self.embed_user.weight)
+        # --- Truncated SVD embedding initialization --- #
+        print("initializing user embeddings with TruncatedSVD")  # <-- NEW
+        svd = TruncatedSVD(n_components=self.multiplier_user_embed_dim * self.emb_dim)  # <-- NEW
+        user_svd_embeddings = svd.fit_transform(UserItemNet)  # <-- NEW
+
+        # Convert to PyTorch nn.Embedding
+        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim).to(self.device)  # <-- NEW
+        with torch.no_grad():  # Optional: avoid tracking gradients for init
+            self.embed_user.weight.data.copy_(
+                torch.tensor(user_svd_embeddings, dtype=torch.float32).to(self.device)
+            )  # <-- NEW
+        print("user embedding initialized")  # <-- NEW
+
+        # self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim)
+        # nn.init.xavier_normal_(self.embed_user.weight)
 
     def compute(self):
         # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
