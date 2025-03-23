@@ -202,25 +202,25 @@ class AlphaRecUserEmb(AbstractModel):
         print(self.mlp_user)
 
     def init_embedding(self):
-        UserItemNet = csr_matrix((np.ones(len(self.data.trainUser)), (self.data.trainUser, self.data.trainItem)),
-                                      shape=(self.data.n_users, self.data.n_items))
+        # UserItemNet = csr_matrix((np.ones(len(self.data.trainUser)), (self.data.trainUser, self.data.trainItem)),
+        #                               shape=(self.data.n_users, self.data.n_items))
+        #
+        # # only for users
+        # # --- Truncated SVD embedding initialization --- #
+        # print("initializing user embeddings with TruncatedSVD")  # <-- NEW
+        # svd = TruncatedSVD(n_components=self.multiplier_user_embed_dim * self.emb_dim)  # <-- NEW
+        # user_svd_embeddings = svd.fit_transform(UserItemNet)  # <-- NEW
+        # user_svd_embeddings = normalize(user_svd_embeddings, norm='l2', axis=1) #sklearn
+        # # Convert to PyTorch nn.Embedding
+        # self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim).to(self.device)  # <-- NEW
+        # with torch.no_grad():  # Optional: avoid tracking gradients for init
+        #     self.embed_user.weight.data.copy_(
+        #         torch.tensor(user_svd_embeddings, dtype=torch.float32).to(self.device)
+        #     )  # <-- NEW
+        # print("user embedding initialized")  # <-- NEW
 
-        # only for users
-        # --- Truncated SVD embedding initialization --- #
-        print("initializing user embeddings with TruncatedSVD")  # <-- NEW
-        svd = TruncatedSVD(n_components=self.multiplier_user_embed_dim * self.emb_dim)  # <-- NEW
-        user_svd_embeddings = svd.fit_transform(UserItemNet)  # <-- NEW
-        user_svd_embeddings = normalize(user_svd_embeddings, norm='l2', axis=1) #sklearn
-        # Convert to PyTorch nn.Embedding
-        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim).to(self.device)  # <-- NEW
-        with torch.no_grad():  # Optional: avoid tracking gradients for init
-            self.embed_user.weight.data.copy_(
-                torch.tensor(user_svd_embeddings, dtype=torch.float32).to(self.device)
-            )  # <-- NEW
-        print("user embedding initialized")  # <-- NEW
-
-        # self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim)
-        # nn.init.xavier_normal_(self.embed_user.weight)
+        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim)
+        nn.init.xavier_normal_(self.embed_user.weight)
 
     def compute(self):
         # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
