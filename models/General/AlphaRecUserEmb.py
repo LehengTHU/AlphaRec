@@ -133,9 +133,7 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
             self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
             self.Graph = self.Graph.coalesce().to(self.device)
 
-
         return self.Graph
-
 
 
 class AlphaRecUserEmb(AbstractModel):
@@ -219,7 +217,8 @@ class AlphaRecUserEmb(AbstractModel):
         #     )  # <-- NEW
         # print("user embedding initialized")  # <-- NEW
 
-        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim)
+        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim,
+                                       dtype=torch.float32)
         nn.init.xavier_normal_(self.embed_user.weight)
 
     def compute(self):
