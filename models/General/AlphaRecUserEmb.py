@@ -137,16 +137,16 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
             )
 
-            #
-            # self.mlp_user = nn.Sequential(
-            #     nn.Linear(self.multiplier_user_embed_dim*self.emb_dim, self.multiplier_user_embed_dim*self.emb_dim),
-            #     nn.LeakyReLU(),
-            #     nn.Linear(self.multiplier_user_embed_dim*self.emb_dim,  self.embed_size)
-            self.mlp_user = MoE(d_in=self.multiplier_user_embed_dim * self.embed_size, d_out=self.embed_size,
-                                n_blocks=1, d_block=4*self.multiplier_user_embed_dim * self.embed_size,
-                                dropout=0.25, activation='LeakyReLU', gating_type='gumbel',
-                                d_block_per_expert=self.multiplier_user_embed_dim * self.embed_size,
-                                default_num_samples=10, tau=1.0)
+            self.mlp_user = nn.Sequential(
+                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
+                nn.LeakyReLU(),
+                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
+            )
+            # self.mlp_user = MoE(d_in=self.multiplier_user_embed_dim * self.embed_size, d_out=self.embed_size,
+            #                     n_blocks=1, d_block=4*self.multiplier_user_embed_dim * self.embed_size,
+            #                     dropout=0.25, activation='LeakyReLU', gating_type='gumbel',
+            #                     d_block_per_expert=self.multiplier_user_embed_dim * self.embed_size,
+            #                     default_num_samples=10, tau=1.0)
 
         print('mlp:')
         print(self.mlp)
