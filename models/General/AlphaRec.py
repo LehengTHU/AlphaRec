@@ -203,7 +203,8 @@ class AlphaRec(AbstractModel):
 
         return ssm_loss
 
-    @torch.no_grad()
+    # @torch.no_grad()
+    @torch.inference_mode()
     def predict(self, users, items=None):
         if items is None:
             items = list(range(self.data.n_items))
