@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import scipy.sparse as sp
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import TruncatedSVD
-
+from sklearn.preprocessing import normalize
 from .base.abstract_model import AbstractModel
 from .base.abstract_RS import AbstractRS
 from .AlphaRec import AlphaRec_Data, AlphaRec_RS, AlphaRec
@@ -210,7 +210,7 @@ class AlphaRecUserEmb(AbstractModel):
         print("initializing user embeddings with TruncatedSVD")  # <-- NEW
         svd = TruncatedSVD(n_components=self.multiplier_user_embed_dim * self.emb_dim)  # <-- NEW
         user_svd_embeddings = svd.fit_transform(UserItemNet)  # <-- NEW
-
+        user_svd_embeddings = normalize(user_svd_embeddings, norm='l2', axis=1) #sklearn
         # Convert to PyTorch nn.Embedding
         self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim).to(self.device)  # <-- NEW
         with torch.no_grad():  # Optional: avoid tracking gradients for init
