@@ -98,6 +98,7 @@ class AlphaRecUserEmb(AbstractModel):
         self.embed_size = args.hidden_size
         self.lm_model = args.lm_model
         self.model_version = args.model_version
+        self.user_model_version = args.user_model_version
         # self.init_user_cf_embeds = data.user_cf_embeds
         self.init_item_cf_embeds = data.item_cf_embeds
 
@@ -125,11 +126,6 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
 
-            # TODO: add bool argument to define whether apply it or not
-            self.mlp_user = nn.Sequential(
-                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo
-            )
-
         else:  # MLP
             self.mlp = nn.Sequential(
                 nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
@@ -137,16 +133,18 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
             )
 
+        if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(
-                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
-                nn.LeakyReLU(),
-                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
+                nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
             )
-            # self.mlp_user = MoE(d_in=self.multiplier_user_embed_dim * self.embed_size, d_out=self.embed_size,
-            #                     n_blocks=1, d_block=4*self.multiplier_user_embed_dim * self.embed_size,
-            #                     dropout=0.25, activation='LeakyReLU', gating_type='gumbel',
-            #                     d_block_per_expert=self.multiplier_user_embed_dim * self.embed_size,
-            #                     default_num_samples=10, tau=1.0)
+        elif self.user_model_version == 'mlp':
+            self.mlp_user = nn.Sequential(
+                nn.Linear(self.embed_size, 2 * self.embed_size),
+                nn.LeakyReLU(),
+                nn.Linear(2 * self.embed_size, self.embed_size)
+            )
+        else:
+            assert False, 'only mlp and homo are supported for user mapping'
 
         print('mlp:')
         print(self.mlp)

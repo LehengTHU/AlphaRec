@@ -233,16 +233,18 @@ class AlphaRecItem(AbstractModel):
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
             )
 
-        if self.model_version == 'homo':
+        if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.embed_size, self.embed_size, bias=False)  # homo
             )
-        else:
+        elif self.user_model_version == 'mlp':
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.embed_size, 2 * self.embed_size),
                 nn.LeakyReLU(),
                 nn.Linear(2 * self.embed_size, self.embed_size)
             )
+        else:
+            assert False, 'only mlp and homo are supported for user mapping'
 
     def init_embedding(self):
         # only for users
