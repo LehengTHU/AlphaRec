@@ -229,8 +229,8 @@ class AlphaRecUserEmb(AbstractModel):
         device = next(self.mlp.parameters()).device
         print("MLP is on:", device)
         print('users')
-        print(self.init_item_cf_embeds.device)
-        device = next(self.mlp.parameters()).device
+        print(self.embed_user.weight.device)
+        device = next(self.mlp_user.parameters()).device
         print("MLP is on:", device)
         items_cf_emb = self.mlp(self.init_item_cf_embeds)
         # users_emb = users_cf_emb
