@@ -133,14 +133,12 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
             self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
             self.Graph = self.Graph.coalesce().to(self.device)
 
-
         return self.Graph
-
 
 
 class AlphaRecUserEmb(AbstractModel):
     def __init__(self, args, data) -> None:
-        self.multiplier_user_embed_dim = 1
+        self.multiplier_user_embed_dim = 2
         super().__init__(args, data)
         self.tau = args.tau
         self.embed_size = args.hidden_size
@@ -205,8 +203,10 @@ class AlphaRecUserEmb(AbstractModel):
         self.is_batch_ens = True
         if self.is_batch_ens:
             print('+ adapter')
-            self.r = nn.Parameter(torch.empty(self.k, self.multiplier_user_embed_dim * self.emb_dim)).to(self.device)
+            self.r = nn.Parameter(
+                torch.empty(self.k, self.multiplier_user_embed_dim * self.emb_dim, device=self.device))
             nn.init.xavier_normal_(self.r)
+
     def init_embedding(self):
         # UserItemNet = csr_matrix((np.ones(len(self.data.trainUser)), (self.data.trainUser, self.data.trainItem)),
         #                               shape=(self.data.n_users, self.data.n_items))
@@ -233,7 +233,8 @@ class AlphaRecUserEmb(AbstractModel):
         if self.is_batch_ens:
             # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
             # Expand input: (E, B, D)
-            x_expanded = self.embed_user.weight.unsqueeze(0).expand(self.k, self.data.n_users, self.user_emb_dim)  # (E, B, D)
+            x_expanded = self.embed_user.weight.unsqueeze(0).expand(self.k, self.data.n_users,
+                                                                    self.user_emb_dim)  # (E, B, D)
             r_expanded = self.r.unsqueeze(1)  # (E, 1, D)
 
             # Element-wise multiply
