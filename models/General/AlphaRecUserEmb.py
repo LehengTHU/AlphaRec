@@ -224,8 +224,15 @@ class AlphaRecUserEmb(AbstractModel):
 
     def compute(self):
         # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
+        print('items')
+        print(self.init_item_cf_embeds.device)
+        device = next(self.mlp.parameters()).device
+        print("MLP is on:", device)
+        print('users')
+        print(self.init_item_cf_embeds.device)
+        device = next(self.mlp.parameters()).device
+        print("MLP is on:", device)
         items_cf_emb = self.mlp(self.init_item_cf_embeds)
-
         # users_emb = users_cf_emb
         users_emb = self.mlp_user(self.embed_user.weight)
         items_emb = items_cf_emb
