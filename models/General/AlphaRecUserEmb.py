@@ -201,6 +201,12 @@ class AlphaRecUserEmb(AbstractModel):
         print('mlp user:')
         print(self.mlp_user)
 
+        self.k = 32
+        self.is_batch_ens = True
+        if self.is_batch_ens:
+            print('+ adapter')
+            self.r = nn.Parameter(torch.empty(self.k, self.multiplier_user_embed_dim * self.emb_dim)).to(self.device)
+            nn.init.xavier_normal_(self.r)
     def init_embedding(self):
         # UserItemNet = csr_matrix((np.ones(len(self.data.trainUser)), (self.data.trainUser, self.data.trainItem)),
         #                               shape=(self.data.n_users, self.data.n_items))
@@ -219,22 +225,34 @@ class AlphaRecUserEmb(AbstractModel):
         #     )  # <-- NEW
         # print("user embedding initialized")  # <-- NEW
 
-        self.embed_user = nn.Embedding(self.data.n_users, self.multiplier_user_embed_dim * self.emb_dim)
+        self.user_emb_dim = self.multiplier_user_embed_dim * self.emb_dim
+        self.embed_user = nn.Embedding(self.data.n_users, self.user_emb_dim).to(self.device)
         nn.init.xavier_normal_(self.embed_user.weight)
 
     def compute(self):
-        # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
-        print('items')
-        print(self.init_item_cf_embeds.device)
-        device = next(self.mlp.parameters()).device
-        print("MLP is on:", device)
-        print('users')
-        print(self.embed_user.weight.device)
-        device = next(self.mlp_user.parameters()).device
-        print("MLP is on:", device)
+        if self.is_batch_ens:
+            # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
+            # Expand input: (E, B, D)
+            x_expanded = self.embed_user.weight.unsqueeze(0).expand(self.k, self.data.n_users, self.user_emb_dim)  # (E, B, D)
+            r_expanded = self.r.unsqueeze(1)  # (E, 1, D)
+
+            # Element-wise multiply
+            x_scaled = x_expanded * r_expanded  # (E, B, D)
+
+            # Flatten for processing through shared MLP
+            x_flat = x_scaled.reshape(self.k * self.data.n_users, self.user_emb_dim)
+
+            # Shared MLP
+            users_emb = self.mlp_user(x_flat)
+
+            # Reshape back
+            users_emb = users_emb.view(self.k, self.data.n_users, -1).mean(dim=0)  # (E, B, output_dim)
+        else:
+            users_emb = self.mlp_user(self.embed_user.weight)
+
         items_cf_emb = self.mlp(self.init_item_cf_embeds)
         # users_emb = users_cf_emb
-        users_emb = self.mlp_user(self.embed_user.weight)
+
         items_emb = items_cf_emb
 
         all_emb = torch.cat([users_emb, items_emb])
