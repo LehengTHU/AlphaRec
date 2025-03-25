@@ -188,6 +188,7 @@ class AlphaRecUserEmb(AbstractModel):
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
                 nn.LeakyReLU(),
+                # nn.Dropout(p=0.2),
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
             )
         elif self.user_model_version == 'emb':
@@ -274,8 +275,12 @@ class AlphaRecUserEmb(AbstractModel):
             embs.append(all_emb)
         embs = torch.stack(embs, dim=1)
 
-        light_out = torch.mean(embs, dim=1)
-        users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
+
+        users, items = torch.split(embs, [self.data.n_users, self.data.n_items])
+        items = torch.mean(items, dim=1)
+        users = users[:,-1,:]
+        # light_out = torch.mean(embs, dim=1)
+        # users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
 
         return users, items
 
