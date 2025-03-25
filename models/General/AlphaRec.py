@@ -91,7 +91,7 @@ class AlphaRec_Data(AbstractData):
             user_cf_embeds = groups.apply(group_agg, embedding_dict=item_cf_embeds_dict, key='item_id')
             user_cf_embeds_dict = user_cf_embeds.to_dict()
             user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
-            self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))
+            self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values())) #TODO: random init embeddings
 
 
 class AlphaRec(AbstractModel):
