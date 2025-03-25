@@ -188,7 +188,6 @@ class AlphaRecUserEmb(AbstractModel):
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
                 nn.LeakyReLU(),
-                nn.Dropout(p=0.2),
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
             )
         elif self.user_model_version == 'emb':
