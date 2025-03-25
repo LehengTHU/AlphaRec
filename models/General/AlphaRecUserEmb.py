@@ -139,12 +139,13 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
 class AlphaRecUserEmb(AbstractModel):
     def __init__(self, args, data) -> None:
         self.multiplier_user_embed_dim = 1
+        self.user_model_version = args.user_model_version
         super().__init__(args, data)
+        print(self.user_model_version)
         self.tau = args.tau
         self.embed_size = args.hidden_size
         self.lm_model = args.lm_model
         self.model_version = args.model_version
-        self.user_model_version = args.user_model_version
         # self.init_user_cf_embeds = data.user_cf_embeds
         self.init_item_cf_embeds = data.item_cf_embeds
 
@@ -187,19 +188,22 @@ class AlphaRecUserEmb(AbstractModel):
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
                 nn.LeakyReLU(),
-                nn.Dropout(p=0.5),
+                nn.Dropout(p=0.2),
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
             )
-
+        elif self.user_model_version == 'emb':
+            self.mlp_user = None
         else:
-            assert False, 'only mlp and homo are supported for user mapping'
+            assert False, 'only mlp, homo and emb are supported for user mapping'
 
         print('mlp:')
         print(self.mlp)
 
-        print('mlp user:')
-        print(self.mlp_user)
-
+        if self.user_model_version != 'emb':
+            print('mlp user:')
+            print(self.mlp_user)
+        else:
+            print('no mlp for user')
         self.k = 32
         self.is_batch_ens = False
         if self.is_batch_ens:
@@ -226,7 +230,9 @@ class AlphaRecUserEmb(AbstractModel):
         #     )  # <-- NEW
         # print("user embedding initialized")  # <-- NEW
 
-        self.user_emb_dim = self.multiplier_user_embed_dim * self.emb_dim
+        self.user_emb_dim = self.multiplier_user_embed_dim * self.emb_dim \
+            if self.user_model_version != 'emd' else self.embed_size
+
         self.embed_user = nn.Embedding(self.data.n_users, self.user_emb_dim).to(self.device)
         nn.init.xavier_normal_(self.embed_user.weight)
 
@@ -250,8 +256,10 @@ class AlphaRecUserEmb(AbstractModel):
             # Reshape back
             users_emb = users_emb.view(self.k, self.data.n_users, -1).mean(dim=0)  # (E, B, output_dim)
         else:
-            users_emb = self.mlp_user(self.embed_user.weight)
-
+            if self.mlp_user is not None:
+                users_emb = self.mlp_user(self.embed_user.weight)
+            else:
+                users_emb = self.embed_user.weight
         items_cf_emb = self.mlp(self.init_item_cf_embeds)
         # users_emb = users_cf_emb
 

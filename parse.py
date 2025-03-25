@@ -131,7 +131,7 @@ def parse_args():
                         help='The mapping method')
 
             parser.add_argument('--user_model_version', type=str, default='mlp',
-                                choices=['mlp', 'homo'],
+                                choices=['mlp', 'homo', 'emb'],
                                 help='The mapping method for users')
 
             parser.add_argument('--random_user_emb',action='store_true',
