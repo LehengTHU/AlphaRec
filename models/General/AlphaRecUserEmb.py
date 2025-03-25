@@ -138,7 +138,7 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
 
 class AlphaRecUserEmb(AbstractModel):
     def __init__(self, args, data) -> None:
-        self.multiplier_user_embed_dim = 10
+        self.multiplier_user_embed_dim = 1
         super().__init__(args, data)
         self.tau = args.tau
         self.embed_size = args.hidden_size
@@ -200,7 +200,7 @@ class AlphaRecUserEmb(AbstractModel):
         print(self.mlp_user)
 
         self.k = 32
-        self.is_batch_ens = True
+        self.is_batch_ens = False
         if self.is_batch_ens:
             print('+ adapter')
             self.r = nn.Parameter(
