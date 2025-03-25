@@ -138,7 +138,7 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
 
 class AlphaRecUserEmb(AbstractModel):
     def __init__(self, args, data) -> None:
-        self.multiplier_user_embed_dim = 20
+        self.multiplier_user_embed_dim = 1
         super().__init__(args, data)
         self.tau = args.tau
         self.embed_size = args.hidden_size
@@ -187,6 +187,7 @@ class AlphaRecUserEmb(AbstractModel):
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
                 nn.LeakyReLU(),
+                nn.Dropout(p=0.5),
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
             )
 
