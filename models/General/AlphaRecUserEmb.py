@@ -277,7 +277,7 @@ class AlphaRecUserEmb(AbstractModel):
 
         users, items = torch.split(embs, [self.data.n_users, self.data.n_items])
         # items = torch.mean(items, dim=1)
-        items = items[:,0:,]
+        items = items[:,0,:]
         users = torch.mean(users, dim=1)
 
         # light_out = torch.mean(embs, dim=1)
