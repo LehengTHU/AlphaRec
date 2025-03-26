@@ -182,7 +182,7 @@ class AlphaRecUserEmb(AbstractModel):
             self.mlp = MoE(d_in=self.init_embed_shape,
                            d_out=self.embed_size,
                            n_blocks=1,
-                           d_block=2*int(multiplier * self.init_embed_shape),
+                           d_block=4*int(multiplier * self.init_embed_shape),
                            dropout=None,
                            activation='LeakyReLU',
                            num_experts=32,
