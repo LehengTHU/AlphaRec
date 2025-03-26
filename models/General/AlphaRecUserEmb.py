@@ -188,7 +188,7 @@ class AlphaRecUserEmb(AbstractModel):
                            num_experts=32,
                            gating_type='gumbel',
                            default_num_samples=10,
-                           tau=0.1)
+                           tau=0.5)
 
         if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(

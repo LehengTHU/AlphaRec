@@ -79,6 +79,7 @@ class MoE(nn.Module):
             d_block_per_expert: Optional[int] = None,
             default_num_samples: int = 10,
             tau: float = 1.0,
+            hard: bool = False,
     ) -> None:
         assert d_out is not None, "the output layer must be added to the MoE"
         super().__init__()
@@ -89,6 +90,7 @@ class MoE(nn.Module):
         self.n_blocks = n_blocks
         self.num_experts = num_experts
         self.default_num_samples = default_num_samples
+        self.hard = hard
         print(f'default num samples: {self.default_num_samples}')
         d_first = d_block // num_experts if d_in is None else d_in
 
