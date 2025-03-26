@@ -174,11 +174,21 @@ class AlphaRecUserEmb(AbstractModel):
             )
 
         else:  # MLP
-            self.mlp = nn.Sequential(
-                nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-                nn.LeakyReLU(),
-                nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-            )
+            # self.mlp = nn.Sequential(
+            #     nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+            #     nn.LeakyReLU(),
+            #     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+            # )
+            self.mlp = MoE(d_in=self.init_embed_shape,
+                           d_out=self.embed_size,
+                           n_blocks=1,
+                           d_block=int(multiplier * self.init_embed_shape),
+                           dropout=None,
+                           activation='LeakyReLU',
+                           num_experts=32,
+                           gating_type='gumbel',
+                           default_num_samples=10,
+                           tau=2.0)
 
         if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(
@@ -275,13 +285,12 @@ class AlphaRecUserEmb(AbstractModel):
             embs.append(all_emb)
         embs = torch.stack(embs, dim=1)
 
-        users, items = torch.split(embs, [self.data.n_users, self.data.n_items])
-        # items = torch.mean(items[:,0:2,:], dim=1)
-        items = items[:,0,:]
-        users = torch.mean(users, dim=1)
+        # users, items = torch.split(embs, [self.data.n_users, self.data.n_items])
+        # items = items[:,0,:]
+        # users = torch.mean(users, dim=1)
 
-        # light_out = torch.mean(embs, dim=1)
-        # users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
+        light_out = torch.mean(embs, dim=1)
+        users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
 
         return users, items
 
