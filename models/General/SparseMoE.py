@@ -100,7 +100,7 @@ class SparseMoE(nn.Module):
         # For each expert, process the inputs routed to it
         for expert_idx in range(self.num_experts):
             # Get mask of samples assigned to this expert
-            mask = selected_experts[:, expert_idx] > 1e-7  # [batch]
+            mask = selected_experts[:, expert_idx] > 1e-5  # [batch]
             if mask.any():
                 x_selected = x[mask]
                 out_selected = self.experts[expert_idx](x_selected)
