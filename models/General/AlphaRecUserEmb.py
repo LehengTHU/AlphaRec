@@ -197,7 +197,7 @@ class AlphaRecUserEmb(AbstractModel):
                                  dropout=None,
                                  activation='LeakyReLU',
                                  num_experts=8,
-                                 tau=10.0)
+                                 tau=1.0)
         if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo
@@ -222,7 +222,7 @@ class AlphaRecUserEmb(AbstractModel):
             print(self.mlp_user)
         else:
             print('no mlp for user')
-        self.k = 32
+        self.k = 8
         self.is_batch_ens = False
         if self.is_batch_ens:
             print('+ adapter')

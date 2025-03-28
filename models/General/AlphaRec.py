@@ -16,6 +16,7 @@ from .base.utils import *
 from functools import partial
 from .MoE import MoE
 
+
 class AlphaRec_RS(AbstractRS):
     def __init__(self, args, special_args) -> None:
         super().__init__(args, special_args)
@@ -91,7 +92,7 @@ class AlphaRec_Data(AbstractData):
             user_cf_embeds = groups.apply(group_agg, embedding_dict=item_cf_embeds_dict, key='item_id')
             user_cf_embeds_dict = user_cf_embeds.to_dict()
             user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
-            self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values())) #TODO: random init embeddings
+            self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))  # TODO: random init embeddings
 
 
 class AlphaRec(AbstractModel):
@@ -121,6 +122,13 @@ class AlphaRec(AbstractModel):
             self.init_item_cf_embeds = nn.Parameter(self.init_item_cf_embeds)
             self.init_user_cf_embeds = nn.Parameter(self.init_user_cf_embeds)
 
+        self.k = 32
+        self.is_batch_ens = True
+        if self.is_batch_ens:
+            print('+ adapter')
+            self.r = nn.Parameter(
+                torch.empty(self.k, self.init_embed_shape, device=self.device))
+            nn.init.xavier_normal_(self.r)
 
         # To keep the same parameter size
         multiplier_dict = {
@@ -170,13 +178,36 @@ class AlphaRec(AbstractModel):
         pass
 
     def compute(self):
-        users_cf_emb = self.mlp(self.init_user_cf_embeds) if not self.random_user_emb \
-            else self.mlp_user(self.init_user_cf_embeds.weight)
+        if self.is_batch_ens:
+            def run_mlp(x, n_elements):
+                # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
+                # Expand input: (E, B, D)
+                x_expanded = x.unsqueeze(0).expand(self.k, n_elements,
+                                                   self.init_embed_shape)  # (E, B, D)
+                r_expanded = self.r.unsqueeze(1)  # (E, 1, D)
 
-        items_cf_emb = self.mlp(self.init_item_cf_embeds)
+                # Element-wise multiply
+                x_scaled = x_expanded * r_expanded  # (E, B, D)
 
-        users_emb = users_cf_emb
-        items_emb = items_cf_emb
+                # Flatten for processing through shared MLP
+                x_flat = x_scaled.reshape(self.k * n_elements, self.init_embed_shape)
+
+                # Shared MLP
+                emb = self.mlp(x_flat)
+
+                # Reshape back
+                return emb.view(self.k, n_elements, -1).mean(dim=0)  # (E, B, output_dim)
+
+            users_emb = run_mlp(self.init_user_cf_embeds, self.data.n_users)
+            items_emb = run_mlp(self.init_item_cf_embeds, self.data.n_items)
+        else:
+            users_cf_emb = self.mlp(self.init_user_cf_embeds) if not self.random_user_emb \
+                else self.mlp_user(self.init_user_cf_embeds.weight)
+
+            items_cf_emb = self.mlp(self.init_item_cf_embeds)
+
+            users_emb = users_cf_emb
+            items_emb = items_cf_emb
 
         all_emb = torch.cat([users_emb, items_emb])
 
