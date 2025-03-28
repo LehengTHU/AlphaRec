@@ -196,8 +196,8 @@ class AlphaRecUserEmb(AbstractModel):
                                  d_block_per_expert=int(multiplier * self.init_embed_shape),
                                  dropout=None,
                                  activation='LeakyReLU',
-                                 num_experts=16,
-                                 tau=1.0)
+                                 num_experts=8,
+                                 tau=2.0)
         if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo
