@@ -104,9 +104,6 @@ class SparseMoE(nn.Module):
             mask = selected_experts[:, expert_idx] > 1e-5  # [batch]
             if mask.any():
                 x_selected = x[mask]
-                out_selected = self.experts[expert_idx](x_selected) * selected_experts[mask, expert_idx]
+                out_selected = self.experts[expert_idx](x_selected) * selected_experts[mask, expert_idx].unsqueeze(-1)
                 output[mask] = out_selected
-        if self.training:
-            print('hello:')
-            print(self.gate.lin.weight.grad)
         return output

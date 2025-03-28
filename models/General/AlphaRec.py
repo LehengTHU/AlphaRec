@@ -115,8 +115,9 @@ class AlphaRec(AbstractModel):
             self.init_user_cf_embeds = nn.Embedding(self.data.n_users, self.init_embed_shape)
             nn.init.xavier_normal_(self.init_user_cf_embeds.weight)
 
-        self.is_embeds_learnable = True
+        self.is_embeds_learnable = False
         if self.is_embeds_learnable:
+            print('embeds are learnable')
             self.init_item_cf_embeds = nn.Parameter(self.init_item_cf_embeds)
             self.init_user_cf_embeds = nn.Parameter(self.init_user_cf_embeds)
 
