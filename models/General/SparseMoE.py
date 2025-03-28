@@ -23,6 +23,7 @@ class GumbelArgmaxGatingNetwork(GumbelGatingNetwork):
         else:
             selected_experts = torch.argmax(logits, dim=-1)
             counts = torch.bincount(selected_experts, minlength=logits.shape[-1])  # [num_experts]
+            print(logits.shape)
             print('expert counts')
             print(counts)
         return selected_experts
