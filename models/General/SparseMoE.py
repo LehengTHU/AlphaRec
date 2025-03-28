@@ -25,8 +25,8 @@ class GumbelArgmaxGatingNetwork(GumbelGatingNetwork):
             print('expert counts')
             print(counts)
         else:
-            # selected_experts = torch.argmax(logits, dim=-1)
-            selected_experts = F.gumbel_softmax(logits, dim=-1, tau=self.tau, hard=True).argmax(dim=-1)
+            selected_experts = torch.argmax(logits, dim=-1)
+            # selected_experts = F.gumbel_softmax(logits, dim=-1, tau=self.tau, hard=True).argmax(dim=-1)
             counts = torch.bincount(selected_experts, minlength=logits.shape[-1])  # [num_experts]
             print(logits.shape)
             print('expert counts')
