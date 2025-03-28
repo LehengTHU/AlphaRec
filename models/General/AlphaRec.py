@@ -148,10 +148,10 @@ class AlphaRec(AbstractModel):
             self.mlp = MoE(d_in=self.init_embed_shape,
                            d_out=self.embed_size,
                            n_blocks=1,
-                           d_block=16 * int(multiplier * self.init_embed_shape),
+                           d_block=8 * int(multiplier * self.init_embed_shape),
                            dropout=None,
                            activation='LeakyReLU',
-                           num_experts=16,
+                           num_experts=8,
                            gating_type='gumbel',
                            default_num_samples=10,
                            tau=1.0)
