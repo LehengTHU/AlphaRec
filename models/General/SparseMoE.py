@@ -19,13 +19,14 @@ class GumbelArgmaxGatingNetwork(GumbelGatingNetwork):
         # return argmax indices
         logits = self.lin(x)  # shape: (batch, num_experts) or (num_samples, batch, num_experts)
         if self.training:
-            selected_experts = F.gumbel_softmax(logits, dim=-1, tau=self.tau, hard=True).argmax(dim=-1)
+            selected_experts = F.gumbel_softmax(logits, dim=-1, tau=self.tau, hard=True)
             counts = torch.bincount(selected_experts, minlength=logits.shape[-1])  # [num_experts]
             print(logits.shape)
             print('expert counts')
             print(counts)
         else:
-            selected_experts = torch.argmax(logits, dim=-1)
+            indices = torch.argmax(logits, dim=-1)
+            selected_experts = F.one_hot(indices, num_classes=self.num_experts).float()
             # selected_experts = F.gumbel_softmax(logits, dim=-1, tau=self.tau, hard=True).argmax(dim=-1)
             counts = torch.bincount(selected_experts, minlength=logits.shape[-1])  # [num_experts]
             print(logits.shape)
@@ -90,8 +91,16 @@ class SparseMoE(nn.Module):
         output = torch.zeros(x.size(0), self.d_out, device=x.device, dtype=x.dtype)
 
         # Process only the required experts per sample
+        # for expert_idx in range(self.num_experts):
+        #     mask = (selected_experts == expert_idx)
+        #     if mask.any():
+        #         x_selected = x[mask]
+        #         out_selected = self.experts[expert_idx](x_selected)
+        #         output[mask] = out_selected
+        # For each expert, process the inputs routed to it
         for expert_idx in range(self.num_experts):
-            mask = (selected_experts == expert_idx)
+            # Get mask of samples assigned to this expert
+            mask = selected_experts[:, expert_idx] > 1e-7  # [batch]
             if mask.any():
                 x_selected = x[mask]
                 out_selected = self.experts[expert_idx](x_selected)
