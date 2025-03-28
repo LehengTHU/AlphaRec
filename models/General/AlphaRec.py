@@ -14,7 +14,7 @@ from .base.evaluator import ProxyEvaluator
 from .base.utils import *
 
 from functools import partial
-
+from .MoE import MoE
 
 class AlphaRec_RS(AbstractRS):
     def __init__(self, args, special_args) -> None:
@@ -140,11 +140,21 @@ class AlphaRec(AbstractModel):
                 )
 
         else:  # MLP
-            self.mlp = nn.Sequential(
-                nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-                nn.LeakyReLU(),
-                nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-            )
+            # self.mlp = nn.Sequential(
+            #     nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+            #     nn.LeakyReLU(),
+            #     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+            # )
+            self.mlp = MoE(d_in=self.init_embed_shape,
+                           d_out=self.embed_size,
+                           n_blocks=1,
+                           d_block=16 * int(multiplier * self.init_embed_shape),
+                           dropout=None,
+                           activation='LeakyReLU',
+                           num_experts=16,
+                           gating_type='gumbel',
+                           default_num_samples=10,
+                           tau=1.0)
 
             if self.random_user_emb:
                 self.mlp_user = nn.Sequential(
