@@ -125,7 +125,7 @@ class AlphaRec(AbstractModel):
         self.k = 8
         self.is_batch_ens = True
         if self.is_batch_ens:
-            print(f'+ adapter; k= {self.k}')
+            print(f'+ adapter; k = {self.k}')
             self.r = nn.Parameter(
                 torch.empty(self.k, self.init_embed_shape, device=self.device))
             nn.init.xavier_normal_(self.r)
