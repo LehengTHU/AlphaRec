@@ -24,6 +24,8 @@ class GumbelArgmaxGatingNetwork(GumbelGatingNetwork):
             print(logits.shape)
             print('expert counts')
             print(counts)
+            print('--')
+            print(selected_experts)
         else:
             indices = torch.argmax(logits, dim=-1)
             selected_experts = F.one_hot(indices, num_classes=logits.shape[-1]).float()
