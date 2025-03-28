@@ -13,6 +13,7 @@ from tqdm import tqdm
 from .base.utils import *
 
 from .MoE import MoE
+from .SparseMoE import SparseMoE
 
 
 class AlphaRecUserEmb_RS(AlphaRec_RS):
@@ -179,17 +180,24 @@ class AlphaRecUserEmb(AbstractModel):
             #     nn.LeakyReLU(),
             #     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
             # )
-            self.mlp = MoE(d_in=self.init_embed_shape,
-                           d_out=self.embed_size,
-                           n_blocks=1,
-                           d_block=8*int(multiplier * self.init_embed_shape),
-                           dropout=None,
-                           activation='LeakyReLU',
-                           num_experts=32,
-                           gating_type='gumbel',
-                           default_num_samples=10,
-                           tau=0.5)
-
+            # self.mlp = MoE(d_in=self.init_embed_shape,
+            #                d_out=self.embed_size,
+            #                n_blocks=1,
+            #                d_block=8*int(multiplier * self.init_embed_shape),
+            #                dropout=None,
+            #                activation='LeakyReLU',
+            #                num_experts=32,
+            #                gating_type='gumbel',
+            #                default_num_samples=10,
+            #                tau=0.5)
+            self.mlp = SparseMoE(d_in=self.init_embed_shape,
+                                 d_out=self.embed_size,
+                                 n_blocks=1,
+                                 d_block_per_expert=int(multiplier * self.init_embed_shape),
+                                 dropout=None,
+                                 activation='LeakyReLU',
+                                 num_experts=8,
+                                 tau=0.5)
         if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo

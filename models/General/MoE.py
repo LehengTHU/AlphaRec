@@ -44,7 +44,7 @@ class GumbelGatingNetwork(nn.Module):
     We'll provide a method to sum the KL from both layers.
     """
 
-    def __init__(self, in_features=784, num_experts=3, tau=1.0):
+    def __init__(self, in_features=784, num_experts=3, tau=1.0,):
         super().__init__()
         self.lin = nn.Linear(in_features, num_experts)
         self.tau = tau
@@ -63,7 +63,6 @@ class GumbelGatingNetwork(nn.Module):
             alpha = F.gumbel_softmax(logits_expanded, tau=self.tau, hard=hard, dim=-1)
         return alpha
 
-
 class MoE(nn.Module):
     def __init__(
             self,
@@ -79,7 +78,7 @@ class MoE(nn.Module):
             d_block_per_expert: Optional[int] = None,
             default_num_samples: int = 10,
             tau: float = 1.0,
-            hard: bool = False,
+            type: Literal['argmax', 'dense'] = 'dense',
     ) -> None:
         assert d_out is not None, "the output layer must be added to the MoE"
         super().__init__()
@@ -89,8 +88,8 @@ class MoE(nn.Module):
 
         self.n_blocks = n_blocks
         self.num_experts = num_experts
-        self.default_num_samples = default_num_samples
-        self.hard = hard
+        self.default_num_samples = default_num_samples if type == 'dense' else 1
+        self.type = type
         print(f'default num samples: {self.default_num_samples}')
         d_first = d_block // num_experts if d_in is None else d_in
 
