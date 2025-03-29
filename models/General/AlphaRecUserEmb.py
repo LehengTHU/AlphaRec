@@ -179,18 +179,19 @@ class AlphaRecUserEmb(AbstractModel):
         else:
             multiplier = 9 / 32  # for dimension = 4096
 
-        if (self.model_version == 'homo'):  # Linear mapping
-            self.mlp = nn.Sequential(
-                nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
-            )
-        elif self.is_kmeans:
-            self.mlp = self.create_cluster_mlps(self.num_clusters, multiplier)
-        else:  # MLP
-            self.mlp = nn.Sequential(
-                nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-                nn.LeakyReLU(),
-                nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-            )
+        if self.is_kmeans:
+            self.mlp = self.create_cluster_mlps(self.num_clusters, multiplier, self.model_version)
+        else:
+            if (self.model_version == 'homo'):  # Linear mapping
+                self.mlp = nn.Sequential(
+                    nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                )
+            else:  # MLP
+                self.mlp = nn.Sequential(
+                    nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                    nn.LeakyReLU(),
+                    nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+                )
             # self.mlp = MoE(d_in=self.init_embed_shape,
             #                d_out=self.embed_size,
             #                n_blocks=1,
@@ -242,15 +243,22 @@ class AlphaRecUserEmb(AbstractModel):
                 torch.empty(self.k, self.multiplier_user_embed_dim * self.emb_dim, device=self.device))
             nn.init.xavier_normal_(self.r)
 
-    def create_cluster_mlps(self, num_clusters, multiplier):
+    def create_cluster_mlps(self, num_clusters, multiplier, model_version):
         mlps = nn.ModuleList()
 
         for cluster_idx in range(num_clusters):
-            mlp = nn.Sequential(
-                nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-                nn.LeakyReLU(),
-                nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-            )
+            if model_version == 'mlp':
+                mlp = nn.Sequential(
+                    nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                    nn.LeakyReLU(),
+                    nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+                )
+            elif model_version == 'homo':
+                mlp = nn.Sequential(
+                    nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                )
+            else:
+                assert False
             mlps.append(mlp)
         return mlps
     def init_embedding(self):
