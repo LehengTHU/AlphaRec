@@ -156,7 +156,7 @@ class AlphaRecUserEmb(AbstractModel):
         # self.init_embed_shape = self.init_user_cf_embeds.shape[1]
         self.init_embed_shape = self.init_item_cf_embeds.shape[1]  # TODO: is it okay?
         self.is_kmeans = True
-        self.num_clusters = 16
+        self.num_clusters = 4
         if self.is_kmeans:
             # Apply KMeans with dot product
             self.item_cluster_labels, centroids = kmeans_dot_product(self.init_item_cf_embeds,
