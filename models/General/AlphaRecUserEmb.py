@@ -136,7 +136,7 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
 
         return self.Graph
 
-
+from .AlphaRec import kmeans_dot_product, count_cluster_sizes, assign_users_to_centroids, apply_cluster_mlps
 class AlphaRecUserEmb(AbstractModel):
     def __init__(self, args, data) -> None:
         self.multiplier_user_embed_dim = 1
@@ -155,6 +155,16 @@ class AlphaRecUserEmb(AbstractModel):
 
         # self.init_embed_shape = self.init_user_cf_embeds.shape[1]
         self.init_embed_shape = self.init_item_cf_embeds.shape[1]  # TODO: is it okay?
+        self.is_kmeans = True
+        self.num_clusters = 16
+        if self.is_kmeans:
+            # Apply KMeans with dot product
+            self.item_cluster_labels, centroids = kmeans_dot_product(self.init_item_cf_embeds,
+                                                                     num_clusters=self.num_clusters)
+            # Save the centroids
+            self.item_cf_centroids = centroids  # shape: (self.num_clusters, embedding_dim)
+            self.item_cf_cluster_labels = self.item_cluster_labels  # shape: (num_items,)
+            count_cluster_sizes(self.item_cluster_labels, num_clusters=self.num_clusters)
 
         # To keep the same parameter size
         multiplier_dict = {
@@ -173,13 +183,14 @@ class AlphaRecUserEmb(AbstractModel):
             self.mlp = nn.Sequential(
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
-
+        elif self.is_kmeans:
+            self.mlp = self.create_cluster_mlps(self.num_clusters, multiplier)
         else:  # MLP
-            # self.mlp = nn.Sequential(
-            #     nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-            #     nn.LeakyReLU(),
-            #     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-            # )
+            self.mlp = nn.Sequential(
+                nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                nn.LeakyReLU(),
+                nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+            )
             # self.mlp = MoE(d_in=self.init_embed_shape,
             #                d_out=self.embed_size,
             #                n_blocks=1,
@@ -190,14 +201,14 @@ class AlphaRecUserEmb(AbstractModel):
             #                gating_type='gumbel',
             #                default_num_samples=10,
             #                tau=1.0)
-            self.mlp = SparseMoE(d_in=self.init_embed_shape,
-                                 d_out=self.embed_size,
-                                 n_blocks=1,
-                                 d_block_per_expert=int(multiplier * self.init_embed_shape),
-                                 dropout=None,
-                                 activation='LeakyReLU',
-                                 num_experts=8,
-                                 tau=1.0)
+            # self.mlp = SparseMoE(d_in=self.init_embed_shape,
+            #                      d_out=self.embed_size,
+            #                      n_blocks=1,
+            #                      d_block_per_expert=int(multiplier * self.init_embed_shape),
+            #                      dropout=None,
+            #                      activation='LeakyReLU',
+            #                      num_experts=8,
+            #                      tau=1.0)
         if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo
@@ -210,6 +221,7 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
             )
         elif self.user_model_version == 'emb':
+            assert False
             self.mlp_user = None
         else:
             assert False, 'only mlp, homo and emb are supported for user mapping'
@@ -230,6 +242,17 @@ class AlphaRecUserEmb(AbstractModel):
                 torch.empty(self.k, self.multiplier_user_embed_dim * self.emb_dim, device=self.device))
             nn.init.xavier_normal_(self.r)
 
+    def create_cluster_mlps(self, num_clusters, multiplier):
+        mlps = nn.ModuleList()
+
+        for cluster_idx in range(num_clusters):
+            mlp = nn.Sequential(
+                nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                nn.LeakyReLU(),
+                nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+            )
+            mlps.append(mlp)
+        return mlps
     def init_embedding(self):
         # UserItemNet = csr_matrix((np.ones(len(self.data.trainUser)), (self.data.trainUser, self.data.trainItem)),
         #                               shape=(self.data.n_users, self.data.n_items))
@@ -278,7 +301,15 @@ class AlphaRecUserEmb(AbstractModel):
                 users_emb = self.mlp_user(self.embed_user.weight)
             else:
                 users_emb = self.embed_user.weight
-        items_cf_emb = self.mlp(self.init_item_cf_embeds)
+        if self.is_kmeans:
+            items_cf_emb = apply_cluster_mlps(
+                self.init_item_cf_embeds,
+                self.item_cluster_labels,
+                self.mlp,
+                num_clusters=self.num_clusters
+            )
+        else:
+            items_cf_emb = self.mlp(self.init_item_cf_embeds)
         # users_emb = users_cf_emb
 
         items_emb = items_cf_emb
