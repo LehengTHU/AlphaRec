@@ -155,7 +155,7 @@ class AlphaRecUserEmb(AbstractModel):
 
         # self.init_embed_shape = self.init_user_cf_embeds.shape[1]
         self.init_embed_shape = self.init_item_cf_embeds.shape[1]  # TODO: is it okay?
-        self.is_kmeans = True
+        self.is_kmeans = False
         self.num_clusters = 4
         if self.is_kmeans:
             # Apply KMeans with dot product
@@ -215,12 +215,20 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo
             )
         elif self.user_model_version == 'mlp':
-            self.mlp_user = nn.Sequential(
-                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
-                nn.LeakyReLU(),
-                # nn.Dropout(p=0.2),
-                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
-            )
+            # self.mlp_user = nn.Sequential(
+            #     nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
+            #     nn.LeakyReLU(),
+            #     # nn.Dropout(p=0.2),
+            #     nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
+            # )
+            self.mlp_user = SparseMoE(d_in=self.emb_dim,
+                                 d_out=self.embed_size,
+                                 n_blocks=1,
+                                 d_block_per_expert=self.emb_dim,
+                                 dropout=0.25,
+                                 activation='LeakyReLU',
+                                 num_experts=8,
+                                 tau=0.1)
         elif self.user_model_version == 'emb':
             assert False
             self.mlp_user = None
