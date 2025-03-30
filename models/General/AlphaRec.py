@@ -317,7 +317,7 @@ class AlphaRec(AbstractModel):
         else:
             pos_ratings = torch.sum(users_emb.unsqueeze(1) * pos_emb,
                                     dim=-1)  # [B, L]
-            numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1) / n_items_per_user  # [B]
+            numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1)  # [B]
 
         # if self.data.is_sample_pos_items:
         #     neg_ratings = neg_ratings.squeeze(dim=1)
@@ -331,10 +331,10 @@ class AlphaRec(AbstractModel):
         # if self.data.is_sample_pos_items:
         #     ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
         # else:
-        #     # print((1.0/n_items_per_user).shape)
-        #     # print((1.0/n_items_per_user))
-        #     # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
-        #     ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
+        #     print((1.0/n_items_per_user).shape)
+            # print((1.0/n_items_per_user))
+            # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
+            # ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
         return ssm_loss
 
     # @torch.no_grad()
