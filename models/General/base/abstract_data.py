@@ -391,9 +391,9 @@ class TrainDataset(torch.utils.data.Dataset):
 
     def __init__(self, model_name, users, train_user_list, user_pop_idx, item_pop_idx, neg_sample, \
                  n_observations, n_items, sample_items, infonce, items, nu_info=None, ni_info=None,
-                 is_sample_pos_items=True):
+                 is_sample_pos_items=True, n_pos_samples=10):
         self.is_sample_pos_items = is_sample_pos_items
-
+        self.n_pos_samples = n_pos_samples
         self.model_name = model_name
         self.users = users
         self.train_user_list = train_user_list
@@ -424,12 +424,13 @@ class TrainDataset(torch.utils.data.Dataset):
                 pos_item = rd.choice(self.train_user_list[user])
                 mask = 1
             else:
-                pos_item = rd.sample(self.train_user_list[user], 5) if len(self.train_user_list[user]) > 5 else \
-                    self.train_user_list[user][:5]
-                mask = torch.zeros(5).long()
+                pos_item = rd.sample(self.train_user_list[user], self.n_pos_samples) if \
+                    len(self.train_user_list[user]) > self.n_pos_samples else \
+                    self.train_user_list[user][:self.n_pos_samples]
+                mask = torch.zeros(self.n_pos_samples).long()
                 mask[:len(pos_item)] = 1
-                if len(pos_item) < 5:
-                    pos_item += [-1] * (5 - len(pos_item))
+                if len(pos_item) < self.n_pos_samples:
+                    pos_item += [-1] * (self.n_pos_samples - len(pos_item))
                 pos_item = torch.tensor(pos_item).long()
         # print(pos_item)
         user_pop = self.user_pop_idx[user]
