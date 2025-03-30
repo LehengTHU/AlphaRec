@@ -15,6 +15,7 @@ from .base.utils import *
 from .MoE import MoE
 from .SparseMoE import SparseMoE
 
+from .utils import kmeans_dot_product, count_cluster_sizes, assign_users_to_centroids, apply_cluster_mlps
 
 class AlphaRecUserEmb_RS(AlphaRec_RS):
     def __init__(self, args, special_args) -> None:
@@ -136,7 +137,6 @@ class AlphaRecUserEmb_Data(AlphaRec_Data):
 
         return self.Graph
 
-from .AlphaRec import kmeans_dot_product, count_cluster_sizes, assign_users_to_centroids, apply_cluster_mlps
 class AlphaRecUserEmb(AbstractModel):
     def __init__(self, args, data) -> None:
         self.multiplier_user_embed_dim = 1
@@ -215,20 +215,20 @@ class AlphaRecUserEmb(AbstractModel):
                 nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo
             )
         elif self.user_model_version == 'mlp':
-            # self.mlp_user = nn.Sequential(
-            #     nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
-            #     nn.LeakyReLU(),
-            #     # nn.Dropout(p=0.2),
-            #     nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
-            # )
-            self.mlp_user = SparseMoE(d_in=self.emb_dim,
-                                 d_out=self.embed_size,
-                                 n_blocks=1,
-                                 d_block_per_expert=self.emb_dim,
-                                 dropout=0.25,
-                                 activation='LeakyReLU',
-                                 num_experts=8,
-                                 tau=0.1)
+            self.mlp_user = nn.Sequential(
+                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.multiplier_user_embed_dim * self.emb_dim),
+                nn.LeakyReLU(),
+                # nn.Dropout(p=0.2),
+                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size)
+            )
+            # self.mlp_user = SparseMoE(d_in=self.emb_dim,
+            #                      d_out=self.embed_size,
+            #                      n_blocks=1,
+            #                      d_block_per_expert=self.emb_dim,
+            #                      dropout=0.25,
+            #                      activation='LeakyReLU',
+            #                      num_experts=8,
+            #                      tau=0.1)
         elif self.user_model_version == 'emb':
             assert False
             self.mlp_user = None

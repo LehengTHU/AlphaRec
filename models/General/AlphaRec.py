@@ -15,6 +15,7 @@ from .base.utils import *
 
 from functools import partial
 from .MoE import MoE
+from .utils import Expert, kmeans_dot_product, apply_cluster_mlps, assign_users_to_centroids, count_cluster_sizes
 
 
 class AlphaRec_RS(AbstractRS):
@@ -95,85 +96,6 @@ class AlphaRec_Data(AbstractData):
             self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))  # TODO: random init embeddings
 
 
-def kmeans_dot_product(x, num_clusters, num_iters=100):
-    """
-    KMeans clustering using dot product similarity, with centroid change reporting.
-    x: Tensor of shape (n_samples, embed_dim), unnormalized
-    """
-    n_samples, dim = x.shape
-
-    # Randomly choose initial centroids from the dataset
-    indices = torch.randperm(n_samples)[:num_clusters]
-    centroids = x[indices]
-    print('start k means')
-    for i in range(num_iters):
-        # Compute dot product similarity
-        sim = torch.matmul(x, centroids.T)  # (n_samples, num_clusters)
-
-        # Assign each point to the nearest centroid
-        labels = torch.argmax(sim, dim=1)
-
-        # Recompute centroids
-        new_centroids = torch.stack([
-            x[labels == k].mean(dim=0) if (labels == k).sum() > 0 else centroids[k]
-            for k in range(num_clusters)
-        ])
-
-        # Compute and report centroid shift (mean L2 diff)
-        diff = torch.norm(centroids - new_centroids, dim=1).mean()
-        print(f"Iteration {i + 1}: mean centroid shift = {diff.item():.6f}")
-
-        # Check for convergence
-        if diff < 1e-5:
-            print("Converged.")
-            break
-
-        centroids = new_centroids
-
-    return labels, centroids
-
-
-def count_cluster_sizes(labels, num_clusters):
-    counts = torch.bincount(labels, minlength=num_clusters)
-    for i, count in enumerate(counts):
-        print(f"Cluster {i}: {count.item()} items")
-    return counts
-
-
-def assign_users_to_centroids(user_embeds, centroids):
-    """
-    Assign each user to the nearest item centroid using dot product similarity.
-    """
-    # user_embeds: (num_users, embed_dim)
-    # centroids: (num_clusters, embed_dim)
-
-    # Compute dot product similarity
-    sim = torch.matmul(user_embeds, centroids.T)  # shape: (num_users, num_clusters)
-
-    # Assign each user to the most similar centroid
-    user_labels = torch.argmax(sim, dim=1)
-
-    return user_labels
-
-
-def apply_cluster_mlps(embeds, cluster_labels, mlps, num_clusters):
-    """
-    Apply cluster-specific MLPs to embeddings in batch per cluster.
-
-    embeds: (N, embed_dim)
-    cluster_labels: (N,) with values in [0, num_clusters-1]
-    mlps: list or ModuleList of MLPs
-    """
-    output = torch.zeros((embeds.size(0), mlps[0][-1].out_features), device=embeds.device)
-
-    for cluster_id in range(num_clusters):
-        indices = (cluster_labels == cluster_id).nonzero(as_tuple=True)[0]
-        if indices.numel() == 0:
-            continue
-        cluster_embeds = embeds[indices]
-        output[indices] = mlps[cluster_id](cluster_embeds)
-
-    return output
 class AlphaRec(AbstractModel):
     def __init__(self, args, data) -> None:
         super().__init__(args, data)
@@ -195,11 +117,12 @@ class AlphaRec(AbstractModel):
             self.init_user_cf_embeds = nn.Embedding(self.data.n_users, self.init_embed_shape)
             nn.init.xavier_normal_(self.init_user_cf_embeds.weight)
 
-        self.is_kmeans = True
+        self.is_kmeans = False
         self.num_clusters = 4
         if self.is_kmeans:
             # Apply KMeans with dot product
-            self.item_cluster_labels, centroids = kmeans_dot_product(self.init_item_cf_embeds, num_clusters=self.num_clusters)
+            self.item_cluster_labels, centroids = kmeans_dot_product(self.init_item_cf_embeds,
+                                                                     num_clusters=self.num_clusters)
             # Save the centroids
             self.item_cf_centroids = centroids  # shape: (self.num_clusters, embedding_dim)
             self.item_cf_cluster_labels = self.item_cluster_labels  # shape: (num_items,)
@@ -252,11 +175,14 @@ class AlphaRec(AbstractModel):
             if self.is_kmeans:
                 self.mlp = self.create_cluster_mlps(self.num_clusters, multiplier)
             else:
-                self.mlp = nn.Sequential(
-                    nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-                    nn.LeakyReLU(),
-                    nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-                )
+                # self.mlp = nn.Sequential(
+                #     nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                #     nn.LeakyReLU(),
+                #     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+                # )
+
+                self.mlp = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
+                                  d_out=self.embed_size)
             # self.mlp = MoE(d_in=self.init_embed_shape,
             #                d_out=self.embed_size,
             #                n_blocks=1,
@@ -272,7 +198,8 @@ class AlphaRec(AbstractModel):
                 self.mlp_user = nn.Sequential(
                     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
                 )
-
+    print('mlp:')
+    print(self.mlp)
     def create_cluster_mlps(self, num_clusters, multiplier):
         mlps = nn.ModuleList()
 
