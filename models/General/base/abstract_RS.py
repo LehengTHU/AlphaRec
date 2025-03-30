@@ -136,6 +136,7 @@ class AbstractRS(nn.Module):
             t1=time.time()
             losses = self.train_one_epoch(epoch) # train one epoch
             t2=time.time()
+            print(f'epoch={epoch};  loss={losses}')
             self.document_running_loss(losses, epoch, t2-t1) # report the loss
             if (epoch + 1) % self.verbose == 0: # evaluate the model
                 self.eval_and_check_early_stop(epoch)

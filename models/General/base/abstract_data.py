@@ -418,15 +418,16 @@ class TrainDataset(torch.utils.data.Dataset):
         user = self.users[index]
         if self.train_user_list[user] == []:
             pos_items = 0
-            n_items_per_user = 0
+            mask = 0
         else:
             if self.is_sample_pos_items:
                 pos_item = rd.choice(self.train_user_list[user])
-                n_items_per_user = 1
+                mask = 1
             else:
                 pos_item = rd.sample(self.train_user_list[user], 5) if len(self.train_user_list[user]) > 5 else \
                     self.train_user_list[user][:5]
-                n_items_per_user = len(pos_item)
+                mask = torch.zeros(5).long()
+                mask[:len(pos_item)] = 1
                 if len(pos_item) < 5:
                     pos_item += [-1] * (5 - len(pos_item))
                 pos_item = torch.tensor(pos_item).long()
@@ -470,7 +471,7 @@ class TrainDataset(torch.utils.data.Dataset):
                 neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.train_user_list[user])
             neg_items_pop = self.item_pop_idx[neg_items]
 
-            return user, pos_item, user_pop, pos_item_pop, torch.tensor(neg_items).long(), neg_items_pop, n_items_per_user
+            return user, pos_item, user_pop, pos_item_pop, torch.tensor(neg_items).long(), neg_items_pop, mask
 
         else:  # BPR negative sampling. (only sample one negative item)
             while True:
