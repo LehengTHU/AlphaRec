@@ -28,7 +28,8 @@ class AlphaRec_RS(AbstractRS):
         pbar = tqdm(enumerate(self.data.train_loader), mininterval=2, total=len(self.data.train_loader))
         for batch_i, batch in pbar:
             batch = [x.to(self.device) for x in batch]
-            users, pos_items, users_pop, pos_items_pop = batch[0], batch[1], batch[2], batch[3]
+            users, pos_items, users_pop, pos_items_pop, n_items_per_user = batch[0], batch[1], batch[2], batch[3], \
+            batch[6]
 
             if self.args.infonce == 0 or self.args.neg_sample != -1:
                 neg_items = batch[4]
@@ -36,7 +37,7 @@ class AlphaRec_RS(AbstractRS):
 
             self.model.train()
 
-            loss = self.model(users, pos_items, neg_items)
+            loss = self.model(users, pos_items, neg_items, n_items_per_user)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -287,7 +288,7 @@ class AlphaRec(AbstractModel):
 
         return users, items
 
-    def forward(self, users, pos_items, neg_items):
+    def forward(self, users, pos_items, neg_items, n_items_per_user):
 
         all_users, all_items = self.compute()
         if not self.data.is_sample_pos_items:
@@ -322,7 +323,12 @@ class AlphaRec(AbstractModel):
         if self.data.is_sample_pos_items:
             ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
         else:
-            ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / n_real_elements
+            # print((1.0/n_items_per_user).shape)
+            # print((1.0/n_items_per_user))
+            # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
+            ssm_loss = torch.sum(
+                (1.0 / n_items_per_user).unsqueeze(-1) * torch.negative(torch.log(numerator / denominator))) / len(
+                numerator)
         return ssm_loss
 
     # @torch.no_grad()
