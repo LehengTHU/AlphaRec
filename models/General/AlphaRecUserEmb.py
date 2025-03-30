@@ -391,14 +391,14 @@ class AlphaRecUserEmb(AbstractModel):
 
         denominator = numerator + torch.sum(torch.exp(neg_ratings / self.tau), dim=2)
 
-        # ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
-        if self.data.is_sample_pos_items:
-            ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
-        else:
-            # print((1.0/n_items_per_user).shape)
+        ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
+        # if self.data.is_sample_pos_items:
+        #     ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
+        # else:
+        #     print((1.0/n_items_per_user).shape)
             # print((1.0/n_items_per_user))
             # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
-            ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
+            # ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
         return ssm_loss
 
     # @torch.no_grad()
