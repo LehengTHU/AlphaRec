@@ -422,7 +422,8 @@ class TrainDataset(torch.utils.data.Dataset):
             if self.is_sample_pos_items:
                 pos_item = rd.choice(self.train_user_list[user])
             else:
-                pos_item = self.train_user_list[user][:5]
+                pos_item = rd.sample(self.train_user_list[user], 5) if len(self.train_user_list[user]) > 5 else \
+                    self.train_user_list[user][:5]
                 if len(pos_item) < 5:
                     pos_item += [-1] * (5 - len(pos_item))
                 pos_item = torch.tensor(pos_item).long()

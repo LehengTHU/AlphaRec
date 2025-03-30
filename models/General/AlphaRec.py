@@ -292,8 +292,8 @@ class AlphaRec(AbstractModel):
         all_users, all_items = self.compute()
         if not self.data.is_sample_pos_items:
             # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
-            #TODO: is that okay?
-            padding_emb = torch.ones((1, all_items.size(1)), device=all_items.device).detach()
+            # TODO: is that okay?
+            padding_emb = torch.zeros((1, all_items.size(1)), device=all_items.device).detach()
             all_items = torch.cat([all_items, padding_emb], dim=0)  # now all_items[-1] = padding
             n_real_elements = torch.sum(pos_items != -1)
             # n_pad_elements = torch.sum(pos_items == -1)
