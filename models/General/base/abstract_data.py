@@ -391,7 +391,7 @@ class TrainDataset(torch.utils.data.Dataset):
 
     def __init__(self, model_name, users, train_user_list, user_pop_idx, item_pop_idx, neg_sample, \
                  n_observations, n_items, sample_items, infonce, items, nu_info=None, ni_info=None,
-                 is_sample_pos_items=True, n_pos_samples=10):
+                 is_sample_pos_items=True, n_pos_samples=15):
         self.is_sample_pos_items = is_sample_pos_items # whether sample only 1 item
         if not self.is_sample_pos_items:
             self.n_pos_samples = n_pos_samples
