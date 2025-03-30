@@ -174,14 +174,14 @@ class AlphaRec(AbstractModel):
             if self.is_kmeans:
                 self.mlp = self.create_cluster_mlps(self.num_clusters, multiplier)
             else:
-                # self.mlp = nn.Sequential(
-                #     nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-                #     nn.LeakyReLU(),
-                #     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-                # )
+                self.mlp = nn.Sequential(
+                    nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                    nn.LeakyReLU(),
+                    nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+                )
 
-                self.mlp = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
-                                  d_out=self.embed_size)
+                # self.mlp = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
+                #                   d_out=self.embed_size)
             # self.mlp = MoE(d_in=self.init_embed_shape,
             #                d_out=self.embed_size,
             #                n_blocks=1,
