@@ -16,6 +16,7 @@ from reckit import randint_choice
 import os
 import bisect
 
+
 # Helper function used when loading data from files
 def helper_load(filename):
     user_dict_list = {}
@@ -35,6 +36,7 @@ def helper_load(filename):
             user_dict_list[user] = items
 
     return user_dict_list, item_dict,
+
 
 def helper_load_train(filename):
     user_dict_list = {}
@@ -66,10 +68,13 @@ def helper_load_train(filename):
                     item_dict_list[item] = [user]
 
     return user_dict_list, item_dict, item_dict_list, trainUser, trainItem
+
+
 # It loads the data and creates a train_loader
 
 class AbstractData:
     def __init__(self, args):
+        self.is_sample_pos_items = False
         self.path = args.data_path + args.dataset + '/cf_data/'
         self.train_file = self.path + 'train.txt'
         self.valid_file = self.path + 'valid.txt'
@@ -77,12 +82,12 @@ class AbstractData:
 
         self.mix = True if 'mix' in args.dataset else False
 
-        if(args.nodrop):
+        if (args.nodrop):
             self.train_nodrop_file = self.path + 'train_nodrop.txt'
         self.nodrop = args.nodrop
 
         self.candidate = args.candidate
-        if(args.candidate):
+        if (args.candidate):
             self.test_neg_file = self.path + 'test_neg.txt'
         self.batch_size = args.batch_size
         self.neg_sample = args.neg_sample
@@ -108,7 +113,7 @@ class AbstractData:
         # {item1: [user1, user2], item2: [user1, user3], ...}
         self.train_user_list = collections.defaultdict(list)
         self.valid_user_list = collections.defaultdict(list)
-        if(self.dataset == "tencent_synthetic" or self.dataset == "kuairec_ood"):
+        if (self.dataset == "tencent_synthetic" or self.dataset == "kuairec_ood"):
             self.test_ood_user_list_1 = collections.defaultdict(list)
             self.test_ood_user_list_2 = collections.defaultdict(list)
             self.test_ood_user_list_3 = collections.defaultdict(list)
@@ -123,14 +128,14 @@ class AbstractData:
         self.Graph = None
         self.trainUser, self.trainItem, self.UserItemNet = [], [], []
         self.n_interactions = 0
-        if(self.dataset == "tencent_synthetic" or self.dataset == "kuairec_ood"):
+        if (self.dataset == "tencent_synthetic" or self.dataset == "kuairec_ood"):
             self.test_ood_item_list_1 = []
             self.test_ood_item_list_2 = []
             self.test_ood_item_list_3 = []
         else:
             self.test_item_list = []
 
-        #Dataloader 
+        # Dataloader
         self.train_data = None
         self.train_loader = None
 
@@ -151,15 +156,14 @@ class AbstractData:
 
         self.test_user_list, self.test_item_list = helper_load(self.test_file)
 
-        if(self.nodrop):
+        if (self.nodrop):
             self.train_nodrop_user_list, self.train_nodrop_item_list = helper_load(self.train_nodrop_file)
 
-        if(self.candidate):
+        if (self.candidate):
             self.test_neg_user_list, self.test_neg_item_list = helper_load(self.test_neg_file)
         else:
             self.test_neg_user_list, self.test_neg_item_list = None, None
         self.pop_dict_list = []
-
 
         temp_lst = [train_item, valid_item, self.test_item_list]
 
@@ -170,16 +174,15 @@ class AbstractData:
         self.n_users = len(self.users)
         self.n_items = len(self.items)
 
-        
         print("n_users: ", self.n_users)
         print("n_items: ", self.n_items)
-        
+
         for i in range(self.n_users):
             self.n_observations += len(self.train_user_list[i])
             self.n_interactions += len(self.train_user_list[i])
             if i in self.valid_user_list.keys():
                 self.n_interactions += len(self.valid_user_list[i])
-            if(self.dataset == "tencent_synthetic" or self.dataset == "kuairec_ood"):
+            if (self.dataset == "tencent_synthetic" or self.dataset == "kuairec_ood"):
                 if i in self.test_ood_user_list_1.keys():
                     self.n_interactions += len(self.test_ood_user_list_1[i])
                 if i in self.test_ood_user_list_2.keys():
@@ -189,9 +192,7 @@ class AbstractData:
             else:
                 if i in self.test_user_list.keys():
                     self.n_interactions += len(self.test_user_list[i])
-
-
-
+        print('average number observations per a user: ', 1.0 * self.n_observations / self.n_users)
         # Population matrix
         pop_dict = {}
         for item, users in self.train_item_list.items():
@@ -234,11 +235,11 @@ class AbstractData:
         item_pop_max = max(self.item_pop_idx)
 
         self.user_pop_max = user_pop_max
-        self.item_pop_max = item_pop_max        
+        self.item_pop_max = item_pop_max
 
         self.sample_items = np.array(self.items, dtype=int)
 
-        if(self.mix):
+        if (self.mix):
             self.add_mixed_data()
         else:
             self.selected_train, self.selected_valid, self.selected_test = [], [], []
@@ -256,7 +257,7 @@ class AbstractData:
             train_user_list_, train_item_, __, ___, ____ = helper_load_train(train_train_file_)
             valid_user_list_, valid_item_ = helper_load(valid_file_)
             test_user_list_, test_item_ = helper_load(test_file_)
-            
+
             temp_lst = [train_item_, valid_item_, test_item_]
             users_ = list(set(train_user_list_.keys()))
             items_ = list(set().union(*temp_lst))
@@ -265,13 +266,13 @@ class AbstractData:
             n_items_ = len(items_)
             print(f"n_users_: {data_name}", n_users_)
             print(f"n_items_: {data_name}", n_items_)
-            
+
             self.selected_train.append(train_user_list_)
             self.selected_valid.append(valid_user_list_)
             self.selected_test.append(test_user_list_)
             self.nu_info.append(n_users_)
             self.ni_info.append(n_items_)
-            
+
             self.cum_ni_info = np.cumsum(self.ni_info)
             self.cum_ni_info = np.insert(self.cum_ni_info, 0, 0)
             self.cum_nu_info = np.cumsum(self.nu_info)
@@ -303,12 +304,12 @@ class AbstractData:
         # self.n_items_book = len(self.items_book)
         # print("n_users_book: ", self.n_users_book)
         # print("n_items_book: ", self.n_items_book)
-        
+
         # self.train_file_game, self.valid_file_game, self.test_file_game = self.path + 'train_game.txt', self.path + 'valid_game.txt', self.path + 'test_game.txt'
         # self.train_user_list_game, train_item_game, __, ___, ____ = helper_load_train(self.train_file_game)
         # self.valid_user_list_game, valid_item_game = helper_load(self.valid_file_game)
         # self.test_user_list_game, test_item_game = helper_load(self.test_file_game)
-        
+
         # temp_lst = [train_item_game, valid_item_game, test_item_game]
         # self.users_game = list(set(self.train_user_list_game.keys()))
         # self.items_game = list(set().union(*temp_lst))
@@ -317,20 +318,23 @@ class AbstractData:
         # self.n_items_game = len(self.items_game)
         # print("n_users_game: ", self.n_users_game)
         # print("n_items_game: ", self.n_items_game)
-        
-        
+
         # self.exclude_items = [self.items_movie, self.items_book]
         # self.selected_train = [self.train_user_list_movie, self.train_user_list_book]
         # self.nui_info = [[self.n_users_movie, self.n_items_movie], [self.n_users_book, self.n_items_book]]
-        
+
         # self.selected_train = [self.train_user_list_movie, self.train_user_list_book, self.train_user_list_game]
         # self.nui_info = [[self.n_users_movie, self.n_items_movie], [self.n_users_book, self.n_items_book], [self.n_users_game, self.n_items_game]]
 
     def get_dataloader(self):
-        self.train_data = TrainDataset(self.model_name, self.users, self.train_user_list, self.user_pop_idx, self.item_pop_idx, \
-                                        self.neg_sample, self.n_observations, self.n_items, self.sample_items, self.infonce, self.items, self.nu_info, self.ni_info)
 
-        self.train_loader = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers, drop_last=True)
+        self.train_data = TrainDataset(self.model_name, self.users, self.train_user_list, self.user_pop_idx,
+                                       self.item_pop_idx, \
+                                       self.neg_sample, self.n_observations, self.n_items, self.sample_items,
+                                       self.infonce, self.items, self.nu_info, self.ni_info, self.is_sample_pos_items)
+
+        self.train_loader = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True,
+                                       num_workers=self.num_workers, drop_last=True)
 
     def _convert_sp_mat_to_sp_tensor(self, X):
         coo = X.tocoo().astype(np.float32)
@@ -356,7 +360,7 @@ class AbstractData:
                 self.trainItem = np.array(self.trainItem)
                 self.trainUser = np.array(self.trainUser)
                 self.UserItemNet = csr_matrix((np.ones(len(self.trainUser)), (self.trainUser, self.trainItem)),
-                                                shape=(self.n_users, self.n_items))
+                                              shape=(self.n_users, self.n_items))
                 R = self.UserItemNet.tolil()
                 adj_mat[:self.n_users, self.n_users:] = R
                 adj_mat[self.n_users:, :self.n_users] = R.T
@@ -382,10 +386,14 @@ class AbstractData:
 
         return self.Graph
 
+
 class TrainDataset(torch.utils.data.Dataset):
 
     def __init__(self, model_name, users, train_user_list, user_pop_idx, item_pop_idx, neg_sample, \
-                n_observations, n_items, sample_items, infonce, items, nu_info = None, ni_info = None):
+                 n_observations, n_items, sample_items, infonce, items, nu_info=None, ni_info=None,
+                 is_sample_pos_items=True):
+        self.is_sample_pos_items = is_sample_pos_items
+
         self.model_name = model_name
         self.users = users
         self.train_user_list = train_user_list
@@ -404,25 +412,33 @@ class TrainDataset(torch.utils.data.Dataset):
         self.cum_ni_info = np.insert(self.cum_ni_info, 0, 0)
         self.cum_nu_info = np.cumsum(self.nu_info)
         self.cum_nu_info = np.insert(self.cum_nu_info, 0, 0)
-        
-    def __getitem__(self, index):
 
+    def __getitem__(self, index):
         index = index % len(self.users)
         user = self.users[index]
         if self.train_user_list[user] == []:
             pos_items = 0
         else:
-            pos_item = rd.choice(self.train_user_list[user])
-
+            if self.is_sample_pos_items:
+                pos_item = rd.choice(self.train_user_list[user])
+            else:
+                pos_item = self.train_user_list[user][:5]
+                if len(pos_item) < 5:
+                    pos_item += [-1] * (5 - len(pos_item))
+                pos_item = torch.tensor(pos_item).long()
+        # print(pos_item)
         user_pop = self.user_pop_idx[user]
-        pos_item_pop = self.item_pop_idx[pos_item]
-
-        if self.infonce == 1 and self.neg_sample == -1: #in-batch
+        if self.is_sample_pos_items:
+            pos_item_pop = self.item_pop_idx[pos_item]
+        else:
+            # TODO: it does not make a difference for alpharec, but for others will
+            pos_item_pop = -1
+        if self.infonce == 1 and self.neg_sample == -1:  # in-batch
             return user, pos_item, user_pop, pos_item_pop
 
-        elif self.infonce == 1 and self.neg_sample != -1: # InfoNCE negative sampling
-            if(len(self.nu_info) > 0):
-                # period = index 
+        elif self.infonce == 1 and self.neg_sample != -1:  # InfoNCE negative sampling
+            if (len(self.nu_info) > 0):
+                # period = index
                 period = bisect.bisect_right(self.cum_nu_info, index) - 1
                 # print(self.cum_ni_info)
                 exclude_items = list(np.array(self.train_user_list[user]) - self.cum_ni_info[period])
@@ -433,7 +449,7 @@ class TrainDataset(torch.utils.data.Dataset):
                 # neg_items = [1]
                 neg_items = randint_choice(self.ni_info[period], size=self.neg_sample, exclusion=exclude_items)
                 neg_items = list(np.array(neg_items) + self.cum_ni_info[period])
-                
+
                 # if(index < self.nui_info[0][0]):
                 #     neg_items = randint_choice(self.nui_info[0][1], size=self.neg_sample, exclusion=self.train_user_list[user])
                 # elif(index < self.nui_info[0][0] + self.nui_info[1][0]):
@@ -445,24 +461,23 @@ class TrainDataset(torch.utils.data.Dataset):
                 #     exclude_items = list(np.array(self.train_user_list[user]) - self.nui_info[0][1] - self.nui_info[1][1])
                 #     neg_items = randint_choice(self.nui_info[2][1], size=self.neg_sample, exclusion=exclude_items)
                 #     neg_items = list(np.array(neg_items) + self.nui_info[0][1] + self.nui_info[1][1])
-                    
+
             else:
                 neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.train_user_list[user])
             neg_items_pop = self.item_pop_idx[neg_items]
 
             return user, pos_item, user_pop, pos_item_pop, torch.tensor(neg_items).long(), neg_items_pop
 
-        else: # BPR negative sampling. (only sample one negative item)
+        else:  # BPR negative sampling. (only sample one negative item)
             while True:
-                idx = rd.randint(0, self.n_items -1)
+                idx = rd.randint(0, self.n_items - 1)
                 neg_item = self.items[idx]
-                
+
                 if neg_item not in self.train_user_list[user]:
                     break
-        
+
             neg_item_pop = self.item_pop_idx[neg_item]
             return user, pos_item, user_pop, pos_item_pop, neg_item, neg_item_pop
 
     def __len__(self):
         return self.n_observations
-    
