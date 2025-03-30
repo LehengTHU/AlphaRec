@@ -313,11 +313,11 @@ class AlphaRec(AbstractModel):
 
         if self.data.is_sample_pos_items:
             pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
+            numerator = torch.exp(pos_ratings / self.tau)
         else:
-            pos_ratings = torch.sum(users_emb.unsqueeze(1) * pos_emb * mask.unsqueeze(-1),
-                                    dim=(-2, -1)) / n_items_per_user  # [B]
-
-        numerator = torch.exp(pos_ratings / self.tau)
+            pos_ratings = torch.sum(users_emb.unsqueeze(1) * pos_emb,
+                                    dim=-1)  # [B, L]
+            numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1) / n_items_per_user  # [B]
 
         # if self.data.is_sample_pos_items:
         #     neg_ratings = neg_ratings.squeeze(dim=1)
