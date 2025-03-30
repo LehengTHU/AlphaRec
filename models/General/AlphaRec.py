@@ -198,8 +198,8 @@ class AlphaRec(AbstractModel):
                 self.mlp_user = nn.Sequential(
                     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
                 )
-    print('mlp:')
-    print(self.mlp)
+            print('mlp:')
+            print(self.mlp)
     def create_cluster_mlps(self, num_clusters, multiplier):
         mlps = nn.ModuleList()
 
