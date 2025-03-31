@@ -18,6 +18,7 @@ from .MoE import MoE
 from .utils import Expert, kmeans_dot_product, apply_cluster_mlps, assign_users_to_centroids, count_cluster_sizes, \
     supcon_loss
 
+from .SparseMoE import SparseMoE
 
 class AlphaRec_RS(AbstractRS):
     def __init__(self, args, special_args) -> None:
@@ -184,17 +185,24 @@ class AlphaRec(AbstractModel):
 
                 # self.mlp = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
                 #                   d_out=self.embed_size)
-                self.mlp = MoE(d_in=self.init_embed_shape,
-                           d_out=self.embed_size,
-                           n_blocks=1,
-                           d_block=8 * int(multiplier * self.init_embed_shape),
-                           dropout=None,
-                           activation='LeakyReLU',
-                           num_experts=8,
-                           gating_type='gumbel',
-                           default_num_samples=10,
-                           tau=1.0)
-
+                # self.mlp = MoE(d_in=self.init_embed_shape,
+                #            d_out=self.embed_size,
+                #            n_blocks=1,
+                #            d_block=8 * int(multiplier * self.init_embed_shape),
+                #            dropout=None,
+                #            activation='LeakyReLU',
+                #            num_experts=8,
+                #            gating_type='gumbel',
+                #            default_num_samples=10,
+                #            tau=1.0)
+                self.mlp = SparseMoE(d_in=self.init_embed_shape,
+                                 d_out=self.embed_size,
+                                 n_blocks=1,
+                                 d_block_per_expert=int(multiplier * self.init_embed_shape),
+                                 dropout=None,
+                                 activation='LeakyReLU',
+                                 num_experts=8,
+                                 tau=1.0)
             if self.random_user_emb:
                 self.mlp_user = nn.Sequential(
                     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
