@@ -74,7 +74,7 @@ def helper_load_train(filename):
 
 class AbstractData:
     def __init__(self, args):
-        self.is_sample_pos_items = False
+        self.is_sample_pos_items = True
         self.path = args.data_path + args.dataset + '/cf_data/'
         self.train_file = self.path + 'train.txt'
         self.valid_file = self.path + 'valid.txt'
