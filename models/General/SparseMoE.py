@@ -35,7 +35,7 @@ class GumbelArgmaxGatingNetwork(GumbelGatingNetwork):
             print(logits.shape)
             print('eval expert counts')
             print(counts)
-        print(F.softmax(logits, dim=-1))
+        # print(F.softmax(logits, dim=-1))
         return selected_experts
 
 
