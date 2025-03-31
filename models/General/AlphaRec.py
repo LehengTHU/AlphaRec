@@ -292,25 +292,27 @@ class AlphaRec(AbstractModel):
     def forward(self, users, pos_items, neg_items, mask):
 
         all_users, all_items = self.compute()
-        if not self.data.is_sample_pos_items:
-            # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
-            # TODO: is that okay?
-            padding_emb = torch.zeros((1, all_items.size(1)), device=all_items.device).detach()
-            all_items = torch.cat([all_items, padding_emb], dim=0)  # now all_items[-1] = padding
-            # n_real_elements = torch.sum(pos_items != -1)
-            # n_pad_elements = torch.sum(pos_items == -1)
-            n_items_per_user = torch.sum(mask, dim=-1)
-            # print(n_items_per_user)
+        # if not self.data.is_sample_pos_items:
+        #     # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
+        #     # TODO: is that okay?
+        #     padding_emb = torch.zeros((1, all_items.size(1)), device=all_items.device).detach()
+        #     all_items = torch.cat([all_items, padding_emb], dim=0)  # now all_items[-1] = padding
+        #     # n_real_elements = torch.sum(pos_items != -1)
+        #     # n_pad_elements = torch.sum(pos_items == -1)
+        #     n_items_per_user = torch.sum(mask, dim=-1)
+        #     # print(n_items_per_user)
+
         users_emb = all_users[users]
         pos_emb = all_items[pos_items]
         neg_emb = all_items[neg_items]
+
+        if not self.data.is_sample_pos_items:
+            return supcon_loss(users_emb, pos_emb, neg_emb, mask, self.tau, 0)
+
         if (self.train_norm):
             users_emb = F.normalize(users_emb, dim=-1)
             pos_emb = F.normalize(pos_emb, dim=-1)
             neg_emb = F.normalize(neg_emb, dim=-1)
-
-        if not self.data.is_sample_pos_items:
-            return supcon_loss(users_emb, pos_emb, neg_emb, mask, self.tau, 0)
 
         neg_ratings = torch.matmul(torch.unsqueeze(users_emb, 1),
                                    neg_emb.permute(0, 2, 1))

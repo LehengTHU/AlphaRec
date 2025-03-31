@@ -15,7 +15,7 @@ from .base.utils import *
 from .MoE import MoE
 from .SparseMoE import SparseMoE
 
-from .utils import kmeans_dot_product, count_cluster_sizes, assign_users_to_centroids, apply_cluster_mlps
+from .utils import kmeans_dot_product, count_cluster_sizes, assign_users_to_centroids, apply_cluster_mlps, supcon_loss
 
 
 class AlphaRecUserEmb_RS(AlphaRec_RS):
@@ -355,17 +355,23 @@ class AlphaRecUserEmb(AbstractModel):
     def forward(self, users, pos_items, neg_items, mask):
 
         all_users, all_items = self.compute()
-        if not self.data.is_sample_pos_items:
-            # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
-            # TODO: is that okay?
-            # padding_emb = torch.zeros((1, all_items.size(1)), device=all_items.device).detach()
-            # all_items = torch.cat([all_items, padding_emb], dim=0)  # now all_items[-1] = padding
+        # if not self.data.is_sample_pos_items:
+        #     # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
+        #     # TODO: is that okay?
+        #     padding_emb = torch.zeros((1, all_items.size(1)), device=all_items.device).detach()
+        #     all_items = torch.cat([all_items, padding_emb], dim=0)  # now all_items[-1] = padding
+        #     # n_real_elements = torch.sum(pos_items != -1)
+        #     # n_pad_elements = torch.sum(pos_items == -1)
+        #     n_items_per_user = torch.sum(mask, dim=-1)
+        #     # print(n_items_per_user)
 
-            n_items_per_user = torch.sum(mask, dim=-1)
-            # print(n_items_per_user)
         users_emb = all_users[users]
         pos_emb = all_items[pos_items]
         neg_emb = all_items[neg_items]
+
+        if not self.data.is_sample_pos_items:
+            return supcon_loss(users_emb, pos_emb, neg_emb, mask, self.tau, 0)
+
         if (self.train_norm):
             users_emb = F.normalize(users_emb, dim=-1)
             pos_emb = F.normalize(pos_emb, dim=-1)
@@ -374,13 +380,15 @@ class AlphaRecUserEmb(AbstractModel):
         neg_ratings = torch.matmul(torch.unsqueeze(users_emb, 1),
                                    neg_emb.permute(0, 2, 1))
 
-        if self.data.is_sample_pos_items:
-            pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
-            numerator = torch.exp(pos_ratings / self.tau)
-        else:
-            numerator = torch.exp(torch.sum(users_emb.unsqueeze(1) * pos_emb,
-                                    dim=-1) / self.tau)  # [B, L]
-            # numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1)  # [B]
+        pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
+        numerator = torch.exp(pos_ratings / self.tau)
+        # if self.data.is_sample_pos_items:
+        #     pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
+        #     numerator = torch.exp(pos_ratings / self.tau)
+        # else:
+        #     pos_ratings = torch.sum(users_emb.unsqueeze(1) * pos_emb,
+        #                             dim=-1)  # [B, L]
+        #     numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1)  # [B]
 
         # if self.data.is_sample_pos_items:
         #     neg_ratings = neg_ratings.squeeze(dim=1)
@@ -395,9 +403,9 @@ class AlphaRecUserEmb(AbstractModel):
         #     ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
         # else:
         #     print((1.0/n_items_per_user).shape)
-            # print((1.0/n_items_per_user))
-            # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
-            # ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
+        # print((1.0/n_items_per_user))
+        # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
+        # ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
         return ssm_loss
 
     # @torch.no_grad()

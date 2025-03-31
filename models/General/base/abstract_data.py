@@ -396,6 +396,7 @@ class TrainDataset(torch.utils.data.Dataset):
         self.is_sample_pos_items = is_sample_pos_items # whether sample only 1 item
         if not self.is_sample_pos_items:
             self.n_pos_samples = n_pos_samples
+            print('multiple positive samples are applied')
             print(f'number of positive samples:{n_pos_samples}')
         self.model_name = model_name
         self.users = users
