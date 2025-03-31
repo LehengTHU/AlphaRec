@@ -15,7 +15,8 @@ from .base.utils import *
 
 from functools import partial
 from .MoE import MoE
-from .utils import Expert, kmeans_dot_product, apply_cluster_mlps, assign_users_to_centroids, count_cluster_sizes
+from .utils import Expert, kmeans_dot_product, apply_cluster_mlps, assign_users_to_centroids, count_cluster_sizes, \
+    supcon_loss
 
 
 class AlphaRec_RS(AbstractRS):
@@ -308,16 +309,21 @@ class AlphaRec(AbstractModel):
             pos_emb = F.normalize(pos_emb, dim=-1)
             neg_emb = F.normalize(neg_emb, dim=-1)
 
+        if not self.data.is_sample_pos_items:
+            return supcon_loss(users_emb, pos_emb, neg_emb, mask, self.tau, 0)
+
         neg_ratings = torch.matmul(torch.unsqueeze(users_emb, 1),
                                    neg_emb.permute(0, 2, 1))
 
-        if self.data.is_sample_pos_items:
-            pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
-            numerator = torch.exp(pos_ratings / self.tau)
-        else:
-            pos_ratings = torch.sum(users_emb.unsqueeze(1) * pos_emb,
-                                    dim=-1)  # [B, L]
-            numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1)  # [B]
+        pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
+        numerator = torch.exp(pos_ratings / self.tau)
+        # if self.data.is_sample_pos_items:
+        #     pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
+        #     numerator = torch.exp(pos_ratings / self.tau)
+        # else:
+        #     pos_ratings = torch.sum(users_emb.unsqueeze(1) * pos_emb,
+        #                             dim=-1)  # [B, L]
+        #     numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1)  # [B]
 
         # if self.data.is_sample_pos_items:
         #     neg_ratings = neg_ratings.squeeze(dim=1)
@@ -332,9 +338,9 @@ class AlphaRec(AbstractModel):
         #     ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
         # else:
         #     print((1.0/n_items_per_user).shape)
-            # print((1.0/n_items_per_user))
-            # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
-            # ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
+        # print((1.0/n_items_per_user))
+        # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
+        # ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
         return ssm_loss
 
     # @torch.no_grad()

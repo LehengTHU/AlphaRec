@@ -358,10 +358,9 @@ class AlphaRecUserEmb(AbstractModel):
         if not self.data.is_sample_pos_items:
             # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
             # TODO: is that okay?
-            padding_emb = torch.zeros((1, all_items.size(1)), device=all_items.device).detach()
-            all_items = torch.cat([all_items, padding_emb], dim=0)  # now all_items[-1] = padding
-            # n_real_elements = torch.sum(pos_items != -1)
-            # n_pad_elements = torch.sum(pos_items == -1)
+            # padding_emb = torch.zeros((1, all_items.size(1)), device=all_items.device).detach()
+            # all_items = torch.cat([all_items, padding_emb], dim=0)  # now all_items[-1] = padding
+
             n_items_per_user = torch.sum(mask, dim=-1)
             # print(n_items_per_user)
         users_emb = all_users[users]
@@ -379,9 +378,9 @@ class AlphaRecUserEmb(AbstractModel):
             pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
             numerator = torch.exp(pos_ratings / self.tau)
         else:
-            pos_ratings = torch.sum(users_emb.unsqueeze(1) * pos_emb,
-                                    dim=-1)  # [B, L]
-            numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1)  # [B]
+            numerator = torch.exp(torch.sum(users_emb.unsqueeze(1) * pos_emb,
+                                    dim=-1) / self.tau)  # [B, L]
+            # numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1)  # [B]
 
         # if self.data.is_sample_pos_items:
         #     neg_ratings = neg_ratings.squeeze(dim=1)

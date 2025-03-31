@@ -1,6 +1,8 @@
 from torch import nn
 import torch
 import torch.nn.functional as F
+
+
 class Expert(nn.Module):
     """
     Expert layer for Mixture-of-Experts (MoE) models.
@@ -10,6 +12,7 @@ class Expert(nn.Module):
         w2 (nn.Module): Linear layer for hidden-to-output transformation.
         w3 (nn.Module): Additional linear layer for feature transformation.
     """
+
     def __init__(self, d_in: int, d_inter: int, d_out: int):
         """
         Initializes the Expert layer.
@@ -34,7 +37,6 @@ class Expert(nn.Module):
             torch.Tensor: Output tensor after expert computation.
         """
         return self.w2(F.silu(self.w1(x)) * self.w3(x))
-
 
 
 def kmeans_dot_product(x, num_clusters, num_iters=100):
@@ -116,3 +118,75 @@ def apply_cluster_mlps(embeds, cluster_labels, mlps, num_clusters):
         output[indices] = mlps[cluster_id](cluster_embeds)
 
     return output
+
+
+def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
+    """
+    Unified SupCon loss for both external and in-batch negative sampling modes.
+
+    Args:
+        user_emb:        [B, D]        - anchor user embeddings
+        pos_item_embs:   [B, P, D]     - positive item embeddings (padded)
+        neg_item_embs:   [B, N, D] or [B, P, D] - either sampled negatives or reused positives (for in-batch)
+        mask:            [B, P]        - binary mask for valid positives
+        tau:             float         - temperature
+        neg_sample:      int           - - neg_sample == -1 → full in-batch negatives, neg_sample == -2 → one negative per other user, neg_sample > 0   → external negatives
+    Returns:
+        Scalar SupCon loss
+    """
+    # Normalize all embeddings
+    user_emb = F.normalize(user_emb, dim=-1)  # [B, D]
+    pos_item_embs = F.normalize(pos_item_embs, dim=-1)  # [B, P, D]
+    neg_item_embs = F.normalize(neg_item_embs, dim=-1)  # shape depends on mode
+
+    B, P, D = pos_item_embs.shape
+    user_exp = user_emb.unsqueeze(1).expand(-1, P, -1)  # [B, P, D]
+
+    # Positive similarities: [B, P]
+    pos_sim = torch.exp(torch.sum(user_exp * pos_item_embs, dim=-1) / tau)
+
+    if neg_sample == -1:
+        # ---------- IN-BATCH NEGATIVE SAMPLING ----------
+        # Flatten all positive items across batch
+        all_items_flat = neg_item_embs.view(B * P, D)  # [B*P, D]
+        # all_items_flat = all_items_flat.detach()                  # optional: prevent gradients through negs
+
+        # Similarities: [B, B*P]
+        sim_matrix = torch.matmul(user_emb, all_items_flat.T) / tau
+        sim_matrix = torch.exp(sim_matrix)
+
+        # Create mask to exclude each user's own positives from denominator
+        neg_mask = torch.ones((B, B * P), device=user_emb.device)
+        for i in range(B):
+            valid_p = int(mask[i].sum().item())
+            neg_mask[i, i * P: i * P + valid_p] = 0  # zero out self-positives
+
+        # Denominator: sum over other users' positives
+        neg_denom = (sim_matrix * neg_mask).sum(dim=1, keepdim=True)  # [B, 1]
+        denom = neg_denom + pos_sim  # [B, P] - broadcast adds back self-positives
+
+    elif neg_sample == -2:
+        # 1 negative from each other user
+        # Input: neg_item_embs [B-1, D] → already pre-sampled in forward
+        sim = torch.exp(torch.sum(user_emb.unsqueeze(1) * neg_item_embs, dim=-1) / tau)  # [B, B-1]
+        neg_sum = sim.sum(dim=1, keepdim=True)  # [B, 1]
+        denom = pos_sim + neg_sum  # [B, P]
+
+    else:
+        # ---------- EXTERNAL NEGATIVE SAMPLING ----------
+        # Compute [B, N] similarities between users and their negatives
+        neg_sim = torch.exp(
+            torch.bmm(user_emb.unsqueeze(1), neg_item_embs.transpose(1, 2)).squeeze(1) / tau
+        )  # [B, N]
+
+        neg_sum = neg_sim.sum(dim=1, keepdim=True)  # [B, 1]
+        denom = pos_sim + neg_sum.expand(-1, P)  # [B, P]
+
+    # Compute log-probabilities for positives
+    log_prob = torch.log(pos_sim / (denom + 1e-8))  # [B, P]
+
+    # Apply mask to ignore padding
+    masked_log_prob = log_prob * mask  # [B, P]
+    user_loss = -masked_log_prob.sum(dim=1) / (mask.sum(dim=1) + 1e-8)  # [B]
+
+    return user_loss.mean()
