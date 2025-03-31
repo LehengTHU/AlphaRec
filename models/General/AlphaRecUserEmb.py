@@ -18,6 +18,29 @@ from .SparseMoE import SparseMoE
 from .utils import kmeans_dot_product, count_cluster_sizes, assign_users_to_centroids, apply_cluster_mlps
 
 
+class DynamicTanh(nn.Module):
+    def __init__(self, normalized_shape, channels_last, alpha_init_value=0.5):
+        super().__init__()
+        self.normalized_shape = normalized_shape
+        self.alpha_init_value = alpha_init_value
+        self.channels_last = channels_last
+
+        self.alpha = nn.Parameter(torch.ones(1) * alpha_init_value)
+        self.weight = nn.Parameter(torch.ones(normalized_shape))
+        self.bias = nn.Parameter(torch.zeros(normalized_shape))
+
+    def forward(self, x):
+        x = torch.tanh(self.alpha * x)
+        if self.channels_last:
+            x = x * self.weight + self.bias
+        else:
+            x = x * self.weight[:, None, None] + self.bias[:, None, None]
+        return x
+
+    def extra_repr(self):
+        return f"normalized_shape={self.normalized_shape}, alpha_init_value={self.alpha_init_value}, channels_last={self.channels_last}"
+
+
 class AlphaRecUserEmb_RS(AlphaRec_RS):
     def __init__(self, args, special_args) -> None:
         super().__init__(args, special_args)
@@ -186,7 +209,8 @@ class AlphaRecUserEmb(AbstractModel):
         else:
             if (self.model_version == 'homo'):  # Linear mapping
                 self.mlp = nn.Sequential(
-                    nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                    nn.Linear(self.init_embed_shape, self.embed_size, bias=False),  # homo
+                    DynamicTanh(self.embed_size, channels_last=True)
                 )
             else:  # MLP
                 self.mlp = nn.Sequential(
@@ -214,7 +238,8 @@ class AlphaRecUserEmb(AbstractModel):
             #                      tau=1.0)
         if self.user_model_version == 'homo':
             self.mlp_user = nn.Sequential(
-                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False)  # homo
+                nn.Linear(self.multiplier_user_embed_dim * self.emb_dim, self.embed_size, bias=False),  # homo
+                DynamicTanh(self.embed_size, channels_last=True)
             )
         elif self.user_model_version == 'mlp':
             self.mlp_user = nn.Sequential(
@@ -396,9 +421,9 @@ class AlphaRecUserEmb(AbstractModel):
         #     ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
         # else:
         #     print((1.0/n_items_per_user).shape)
-            # print((1.0/n_items_per_user))
-            # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
-            # ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
+        # print((1.0/n_items_per_user))
+        # print((1.0/n_items_per_user)*torch.negative(torch.log(numerator / denominator)))
+        # ssm_loss = torch.sum(torch.negative(torch.log(numerator / denominator))) / len(numerator)
         return ssm_loss
 
     # @torch.no_grad()
