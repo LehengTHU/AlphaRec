@@ -143,7 +143,9 @@ def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
     user_exp = user_emb.unsqueeze(1).expand(-1, P, -1)  # [B, P, D]
 
     # Positive similarities: [B, P]
-    pos_sim = torch.exp(torch.sum(user_exp * pos_item_embs, dim=-1) / tau)
+    # pos_sim = torch.exp(torch.sum(user_exp * pos_item_embs, dim=-1) / tau)
+    pos_sim = torch.sum(user_exp * pos_item_embs, dim=-1) * mask
+    return -(pos_sim.sum(dim=1) / (mask.sum(dim=1) + 1e-8)).mean()
 
     if neg_sample == -1:
         assert False
@@ -174,19 +176,18 @@ def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
         neg_sum = sim.sum(dim=1, keepdim=True)  # [B, 1]
         denom = pos_sim + neg_sum  # [B, P]
 
-    # else:
-    #     # ---------- EXTERNAL NEGATIVE SAMPLING ----------
-    #     # Compute [B, N] similarities between users and their negatives
-    #     neg_sim = torch.exp(
-    #         torch.bmm(user_emb.unsqueeze(1), neg_item_embs.transpose(1, 2)).squeeze(1) / tau
-    #     )  # [B, N]
-    #
-    #     neg_sum = neg_sim.sum(dim=1, keepdim=True)  # [B, 1]
-    #     denom = pos_sim + neg_sum.expand(-1, P)  # [B, P]
+    else:
+        # ---------- EXTERNAL NEGATIVE SAMPLING ----------
+        # Compute [B, N] similarities between users and their negatives
+        neg_sim = torch.exp(
+            torch.bmm(user_emb.unsqueeze(1), neg_item_embs.transpose(1, 2)).squeeze(1) / tau
+        )  # [B, N]
+
+        neg_sum = neg_sim.sum(dim=1, keepdim=True)  # [B, 1]
+        denom = pos_sim + neg_sum.expand(-1, P)  # [B, P]
 
     # Compute log-probabilities for positives
-    # log_prob = torch.log(pos_sim / (denom + 1e-8))  # [B, P]
-    log_prob = torch.log(pos_sim)  # [B, P]
+    log_prob = torch.log(pos_sim / (denom + 1e-8))  # [B, P]
 
     # Apply mask to ignore padding
     masked_log_prob = log_prob * mask  # [B, P]
