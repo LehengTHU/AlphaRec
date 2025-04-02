@@ -258,67 +258,68 @@ class AlphaRec(AbstractModel):
         pass
 
     def compute(self):
-        if self.is_batch_ens:
-            def run_mlp(x, n_elements):
-                # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
-                # Expand input: (E, B, D)
-                x_expanded = x.unsqueeze(0).expand(self.k, n_elements,
-                                                   self.init_embed_shape)  # (E, B, D)
-                r_expanded = self.r.unsqueeze(1)  # (E, 1, D)
+        # if self.is_batch_ens:
+        #     def run_mlp(x, n_elements):
+        #         # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
+        #         # Expand input: (E, B, D)
+        #         x_expanded = x.unsqueeze(0).expand(self.k, n_elements,
+        #                                            self.init_embed_shape)  # (E, B, D)
+        #         r_expanded = self.r.unsqueeze(1)  # (E, 1, D)
+        #
+        #         # Element-wise multiply
+        #         x_scaled = x_expanded * r_expanded  # (E, B, D)
+        #
+        #         # Flatten for processing through shared MLP
+        #         x_flat = x_scaled.reshape(self.k * n_elements, self.init_embed_shape)
+        #
+        #         # Shared MLP
+        #         emb = self.mlp(x_flat)
+        #
+        #         # Reshape back
+        #         return emb.view(self.k, n_elements, -1).mean(dim=0)  # (E, B, output_dim)
+        #
+        #     users_emb = run_mlp(self.init_user_cf_embeds, self.data.n_users)
+        #     items_emb = run_mlp(self.init_item_cf_embeds, self.data.n_items)
+        # elif self.is_kmeans:
+        #     # -------- USERS --------
+        #     if not self.random_user_emb:
+        #         user_embeds = self.init_user_cf_embeds
+        #     else:
+        #         user_embeds = self.init_user_cf_embeds.weight  # nn.Embedding
+        #
+        #     users_cf_emb = apply_cluster_mlps(
+        #         user_embeds,
+        #         self.user_cluster_labels,
+        #         self.mlp,
+        #         num_clusters=self.num_clusters
+        #     )
+        #
+        #     # -------- ITEMS --------
+        #     items_cf_emb = apply_cluster_mlps(
+        #         self.init_item_cf_embeds,
+        #         self.item_cluster_labels,
+        #         self.mlp,
+        #         num_clusters=self.num_clusters
+        #     )
+        #
+        #     # -------- FINAL --------
+        #     users_emb = users_cf_emb
+        #     items_emb = items_cf_emb
+        # else:
+        #     if self.is_mlp_for_user:
+        #         users_cf_emb = self.mlp_user(self.init_user_cf_embeds)
+        #     elif self.random_user_emb:
+        #         users_cf_emb = self.mlp_user(self.init_user_cf_embeds.weight)
+        #     else:
+        #         users_cf_emb = self.mlp(self.init_user_cf_embeds)
+        #
+        #     items_cf_emb = self.mlp(self.init_item_cf_embeds)
+        #
+        #     users_emb = users_cf_emb
+        #     items_emb = items_cf_emb
 
-                # Element-wise multiply
-                x_scaled = x_expanded * r_expanded  # (E, B, D)
-
-                # Flatten for processing through shared MLP
-                x_flat = x_scaled.reshape(self.k * n_elements, self.init_embed_shape)
-
-                # Shared MLP
-                emb = self.mlp(x_flat)
-
-                # Reshape back
-                return emb.view(self.k, n_elements, -1).mean(dim=0)  # (E, B, output_dim)
-
-            users_emb = run_mlp(self.init_user_cf_embeds, self.data.n_users)
-            items_emb = run_mlp(self.init_item_cf_embeds, self.data.n_items)
-        elif self.is_kmeans:
-            # -------- USERS --------
-            if not self.random_user_emb:
-                user_embeds = self.init_user_cf_embeds
-            else:
-                user_embeds = self.init_user_cf_embeds.weight  # nn.Embedding
-
-            users_cf_emb = apply_cluster_mlps(
-                user_embeds,
-                self.user_cluster_labels,
-                self.mlp,
-                num_clusters=self.num_clusters
-            )
-
-            # -------- ITEMS --------
-            items_cf_emb = apply_cluster_mlps(
-                self.init_item_cf_embeds,
-                self.item_cluster_labels,
-                self.mlp,
-                num_clusters=self.num_clusters
-            )
-
-            # -------- FINAL --------
-            users_emb = users_cf_emb
-            items_emb = items_cf_emb
-        else:
-            if self.is_mlp_for_user:
-                users_cf_emb = self.mlp_user(self.init_user_cf_embeds)
-            elif self.random_user_emb:
-                users_cf_emb = self.mlp_user(self.init_user_cf_embeds.weight)
-            else:
-                users_cf_emb = self.mlp(self.init_user_cf_embeds)
-
-            items_cf_emb = self.mlp(self.init_item_cf_embeds)
-
-            users_emb = users_cf_emb
-            items_emb = items_cf_emb
-
-        all_emb = torch.cat([users_emb, items_emb])
+        # all_emb = torch.cat([users_emb, items_emb])
+        all_emb = torch.cat([self.init_user_cf_embeds, self.init_item_cf_embeds])
 
         embs = [all_emb]
         g_droped = self.Graph
@@ -333,6 +334,9 @@ class AlphaRec(AbstractModel):
 
         # users = self.mlp_user(users)
         # items = self.mlp_item(items)
+        users = self.mlp(users)
+        items = self.mlp(items)
+
         return users, items
 
     def forward(self, users, pos_items, neg_items, mask):
