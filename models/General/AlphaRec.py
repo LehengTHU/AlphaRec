@@ -228,11 +228,20 @@ class AlphaRec(AbstractModel):
                 print('separate mlp for user is applied')
                 print(self.mlp_user)
 
-            self.mlp2 = nn.Sequential(
+            self.mlp_user = nn.Sequential(
                 nn.Linear(self.emb_dim, self.emb_dim),
                 nn.LeakyReLU(),
                 nn.Linear(self.emb_dim, self.embed_size)
             )
+            self.mlp_item = nn.Sequential(
+                nn.Linear(self.emb_dim, self.emb_dim),
+                nn.LeakyReLU(),
+                nn.Linear(self.emb_dim, self.embed_size)
+            )
+            print('two more mlps')
+            print(self.mlp_user)
+            print(self.mlp_item)
+
     def create_cluster_mlps(self, num_clusters, multiplier):
         mlps = nn.ModuleList()
 
@@ -322,8 +331,8 @@ class AlphaRec(AbstractModel):
         light_out = torch.mean(embs, dim=1)
         users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
 
-        users = self.mlp2(users)
-        items = self.mlp2(items)
+        users = self.mlp_user(users)
+        items = self.mlp_item(items)
         return users, items
 
     def forward(self, users, pos_items, neg_items, mask):
