@@ -173,7 +173,7 @@ class AlphaRec(AbstractModel):
         else:
             multiplier = 9 / 32  # for dimension = 4096
 
-        self.is_mlp_for_user = False
+        self.is_mlp_for_user = True
         if (self.model_version == 'homo'):  # Linear mapping
             self.mlp = nn.Sequential(
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
@@ -331,7 +331,7 @@ class AlphaRec(AbstractModel):
 
         light_out = torch.mean(embs, dim=1)
         users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
-        return users, items
+        # return users, items
         # users = self.mlp_user(users)
         # items = self.mlp_item(items)
         users = self.mlp_user(users)
@@ -340,8 +340,8 @@ class AlphaRec(AbstractModel):
         return users, items
 
     def forward(self, users, pos_items, neg_items, mask):
-        if self.training:
-            return torch.tensor(1.0, requires_grad=True)
+        # if self.training:
+        #     return torch.tensor(1.0, requires_grad=True)
         all_users, all_items = self.compute()
         # if not self.data.is_sample_pos_items:
         #     # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
