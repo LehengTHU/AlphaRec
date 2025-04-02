@@ -144,8 +144,9 @@ def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
 
     # Positive similarities: [B, P]
     # pos_sim = torch.exp(torch.sum(user_exp * pos_item_embs, dim=-1) / tau)
+
     pos_sim = torch.sum(user_exp * pos_item_embs, dim=-1) * mask
-    return -(pos_sim.sum(dim=1) / (mask.sum(dim=1) + 1e-8)).mean()
+    pos_sim = (pos_sim.sum(dim=1) / (mask.sum(dim=1) + 1e-8)) #B
 
     if neg_sample == -1:
         assert False
@@ -183,9 +184,9 @@ def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
             torch.bmm(user_emb.unsqueeze(1), neg_item_embs.transpose(1, 2)).squeeze(1) / tau
         )  # [B, N]
 
-        neg_sum = neg_sim.sum(dim=1, keepdim=True)  # [B, 1]
-        denom = pos_sim + neg_sum.expand(-1, P)  # [B, P]
-
+        # neg_sum = neg_sim.sum(dim=1, keepdim=True)  # [B, 1]
+        # denom = pos_sim + neg_sum.expand(-1, P)  # [B, P]
+    return -(pos_sim - neg_sim.mean(dim=1) + 0.2).mean()
     # Compute log-probabilities for positives
     log_prob = torch.log(pos_sim / (denom + 1e-8))  # [B, P]
 
