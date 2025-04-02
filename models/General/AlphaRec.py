@@ -173,7 +173,7 @@ class AlphaRec(AbstractModel):
         else:
             multiplier = 9 / 32  # for dimension = 4096
 
-        self.is_mlp_for_user = True
+        self.is_mlp_for_user = False
         if (self.model_version == 'homo'):  # Linear mapping
             self.mlp = nn.Sequential(
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
@@ -228,6 +228,11 @@ class AlphaRec(AbstractModel):
                 print('separate mlp for user is applied')
                 print(self.mlp_user)
 
+            self.mlp2 = nn.Sequential(
+                nn.Linear(self.emb_dim, self.emb_dim),
+                nn.LeakyReLU(),
+                nn.Linear(self.emb_dim, self.embed_size)
+            )
     def create_cluster_mlps(self, num_clusters, multiplier):
         mlps = nn.ModuleList()
 
@@ -317,6 +322,8 @@ class AlphaRec(AbstractModel):
         light_out = torch.mean(embs, dim=1)
         users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
 
+        users = self.mlp2(users)
+        items = self.mlp2(items)
         return users, items
 
     def forward(self, users, pos_items, neg_items, mask):
