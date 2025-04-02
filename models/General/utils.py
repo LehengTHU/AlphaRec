@@ -146,6 +146,7 @@ def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
     pos_sim = torch.exp(torch.sum(user_exp * pos_item_embs, dim=-1) / tau)
 
     if neg_sample == -1:
+        assert False
         # ---------- IN-BATCH NEGATIVE SAMPLING ----------
         # Flatten all positive items across batch
         all_items_flat = neg_item_embs.view(B * P, D)  # [B*P, D]
@@ -166,24 +167,26 @@ def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
         denom = neg_denom + pos_sim  # [B, P] - broadcast adds back self-positives
 
     elif neg_sample == -2:
+        assert False
         # 1 negative from each other user
         # Input: neg_item_embs [B-1, D] → already pre-sampled in forward
         sim = torch.exp(torch.sum(user_emb.unsqueeze(1) * neg_item_embs, dim=-1) / tau)  # [B, B-1]
         neg_sum = sim.sum(dim=1, keepdim=True)  # [B, 1]
         denom = pos_sim + neg_sum  # [B, P]
 
-    else:
-        # ---------- EXTERNAL NEGATIVE SAMPLING ----------
-        # Compute [B, N] similarities between users and their negatives
-        neg_sim = torch.exp(
-            torch.bmm(user_emb.unsqueeze(1), neg_item_embs.transpose(1, 2)).squeeze(1) / tau
-        )  # [B, N]
-
-        neg_sum = neg_sim.sum(dim=1, keepdim=True)  # [B, 1]
-        denom = pos_sim + neg_sum.expand(-1, P)  # [B, P]
+    # else:
+    #     # ---------- EXTERNAL NEGATIVE SAMPLING ----------
+    #     # Compute [B, N] similarities between users and their negatives
+    #     neg_sim = torch.exp(
+    #         torch.bmm(user_emb.unsqueeze(1), neg_item_embs.transpose(1, 2)).squeeze(1) / tau
+    #     )  # [B, N]
+    #
+    #     neg_sum = neg_sim.sum(dim=1, keepdim=True)  # [B, 1]
+    #     denom = pos_sim + neg_sum.expand(-1, P)  # [B, P]
 
     # Compute log-probabilities for positives
-    log_prob = torch.log(pos_sim / (denom + 1e-8))  # [B, P]
+    # log_prob = torch.log(pos_sim / (denom + 1e-8))  # [B, P]
+    log_prob = torch.log(pos_sim)  # [B, P]
 
     # Apply mask to ignore padding
     masked_log_prob = log_prob * mask  # [B, P]
