@@ -190,3 +190,82 @@ def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
     user_loss = -masked_log_prob.sum(dim=1) / (mask.sum(dim=1) + 1e-8)  # [B]
 
     return user_loss.mean()
+
+
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import connected_components
+import numpy as np
+from collections import defaultdict
+
+
+def find_user_connected_components(user_item_matrix):
+    """
+    Given a user-item binary interaction matrix, returns connected components of users.
+
+    Parameters:
+        user_item_matrix (array-like or csr_matrix): shape (n_users, n_items)
+            Binary matrix where 1 indicates interaction.
+
+    Returns:
+        clusters_dict (dict): mapping of cluster_id -> list of user indices
+        labels (np.ndarray): cluster ID assigned to each user
+        n_components (int): number of connected components
+    """
+    # Ensure matrix is in CSR sparse format
+    X = csr_matrix(user_item_matrix)
+    # Compute user-user binary co-interaction matrix
+    user_user_shared = X @ X.T
+    user_user_shared.data = np.where(user_user_shared.data > 0, 1, 0)  # binarize connections
+
+    # Compute connected components in the graph
+    n_components, labels = connected_components(csgraph=user_user_shared, directed=False, connection='weak')
+    print(f'n components:{n_components}')
+    # Organize users into clusters
+    clusters_dict = defaultdict(list)
+    for user_id, cluster_id in enumerate(labels):
+        clusters_dict[cluster_id].append(user_id)
+
+    print('number of users in every cluster:')
+    [print(len(v)) for v in clusters_dict.values()]
+    return clusters_dict, labels, n_components
+
+
+import numpy as np
+from scipy.sparse import csr_matrix, vstack
+from typing import Dict, Tuple
+
+
+def get_user_neighbors_and_union_items(
+        interaction_matrix: csr_matrix
+) -> Dict[int, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Efficient version using matrix ops:
+    1. Finds user-user intersections via m @ m.T
+    2. Collects union of items per user and their neighbors
+
+    Returns:
+        Dict[user_id] = (neighbor_user_ids, union_item_ids)
+    """
+    result = {}
+    n_users = interaction_matrix.shape[0]
+
+    # User-user intersection: shared items count
+    user_user_shared = interaction_matrix @ interaction_matrix.T  # shape (n_users, n_users)
+    user_user_shared.setdiag(0)  # remove self-intersections
+
+    for user_id in range(n_users):
+        neighbors = user_user_shared[user_id].nonzero()[1]  # users with shared items
+
+        if neighbors.size > 0:
+            rows_to_union = vstack([interaction_matrix[user_id], interaction_matrix[neighbors]])
+        else:
+            rows_to_union = interaction_matrix[user_id]
+
+        # Get all unique items interacted with by user or neighbors
+        union_items = rows_to_union.sum(axis=0).nonzero()[1]
+
+        num_union_items = union_items.size
+
+        result[user_id] = (neighbors, union_items, num_union_items)
+
+    return result

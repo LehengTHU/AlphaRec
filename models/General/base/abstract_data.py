@@ -16,6 +16,8 @@ from reckit import randint_choice
 import os
 import bisect
 
+from ..utils import get_user_neighbors_and_union_items
+
 
 # Helper function used when loading data from files
 def helper_load(filename):
@@ -74,6 +76,9 @@ def helper_load_train(filename):
 
 class AbstractData:
     def __init__(self, args):
+
+        self.user_neighbors = {}
+
         self.is_sample_pos_items = args.is_sample_pos_items
         self.n_pos_samples = int(args.n_pos_samples)
         self.path = args.data_path + args.dataset + '/cf_data/'
@@ -332,7 +337,8 @@ class AbstractData:
         self.train_data = TrainDataset(self.model_name, self.users, self.train_user_list, self.user_pop_idx,
                                        self.item_pop_idx, \
                                        self.neg_sample, self.n_observations, self.n_items, self.sample_items,
-                                       self.infonce, self.items, self.nu_info, self.ni_info, self.is_sample_pos_items)
+                                       self.infonce, self.items, self.nu_info, self.ni_info, self.is_sample_pos_items,
+                                       n_pos_samples=self.n_pos_samples, user_neighbors=self.user_neighbors)
 
         self.train_loader = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True,
                                        num_workers=self.num_workers, drop_last=True)
@@ -352,6 +358,11 @@ class AbstractData:
                 pre_adj_mat = sp.load_npz(self.path + '/s_pre_adj_mat.npz')
                 print("finish loading adjacency matrix")
                 norm_adj = pre_adj_mat
+
+                self.trainItem = np.array(self.trainItem)
+                self.trainUser = np.array(self.trainUser)
+                self.UserItemNet = csr_matrix((np.ones(len(self.trainUser)), (self.trainUser, self.trainItem)),
+                                              shape=(self.n_users, self.n_items))
             # If there is no preprocessed adjacency matrix, generate one.
             except:
                 print("generating adjacency matrix")
@@ -385,6 +396,8 @@ class AbstractData:
             self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
             self.Graph = self.Graph.coalesce().to(self.device)
 
+        self.user_neighbors.update(get_user_neighbors_and_union_items(self.UserItemNet))
+        print(f'maximum number of excluded items:{np.array([v[2] for v in self.user_neighbors.values()]).max()}')
         return self.Graph
 
 
@@ -392,8 +405,9 @@ class TrainDataset(torch.utils.data.Dataset):
 
     def __init__(self, model_name, users, train_user_list, user_pop_idx, item_pop_idx, neg_sample, \
                  n_observations, n_items, sample_items, infonce, items, nu_info=None, ni_info=None,
-                 is_sample_pos_items=True, n_pos_samples=15):
-        self.is_sample_pos_items = is_sample_pos_items # whether sample only 1 item
+                 is_sample_pos_items=True, n_pos_samples=15, user_neighbors=None):
+        self.is_sample_pos_items = is_sample_pos_items  # whether sample only 1 item
+        self.user_neighbors = user_neighbors
         if not self.is_sample_pos_items:
             self.n_pos_samples = n_pos_samples
             print('multiple positive samples are applied')
@@ -448,6 +462,7 @@ class TrainDataset(torch.utils.data.Dataset):
 
         elif self.infonce == 1 and self.neg_sample != -1:  # InfoNCE negative sampling
             if (len(self.nu_info) > 0):
+                assert False, 'should not be here'
                 # period = index
                 period = bisect.bisect_right(self.cum_nu_info, index) - 1
                 # print(self.cum_ni_info)
@@ -473,7 +488,8 @@ class TrainDataset(torch.utils.data.Dataset):
                 #     neg_items = list(np.array(neg_items) + self.nui_info[0][1] + self.nui_info[1][1])
 
             else:
-                neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.train_user_list[user])
+                neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.user_neighbors[user][1])
+                # neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.train_user_list[user])
             neg_items_pop = self.item_pop_idx[neg_items]
 
             return user, pos_item, user_pop, pos_item_pop, torch.tensor(neg_items).long(), neg_items_pop, mask

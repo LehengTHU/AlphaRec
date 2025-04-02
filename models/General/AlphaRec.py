@@ -19,7 +19,9 @@ from .utils import Expert, kmeans_dot_product, apply_cluster_mlps, assign_users_
     supcon_loss
 
 from .SparseMoE import SparseMoE
+from .utils import find_user_connected_components
 
+from scipy.sparse import csr_matrix
 class AlphaRec_RS(AbstractRS):
     def __init__(self, args, special_args) -> None:
         super().__init__(args, special_args)
@@ -118,6 +120,12 @@ class AlphaRec(AbstractModel):
             print('user embeddings were initalized randomly')
             self.init_user_cf_embeds = nn.Embedding(self.data.n_users, self.init_embed_shape)
             nn.init.xavier_normal_(self.init_user_cf_embeds.weight)
+
+
+        # cluster_dict, labels, n_components = find_user_connected_components(self.data.UserItemNet) did not work, since only one big component
+        # from .utils import get_user_neighbors_and_union_items
+        # user_neighbors = get_user_neighbors_and_union_items(self.data.UserItemNet)
+        # print(f'maximum number of excluded items:{np.array([v[2] for v in user_neighbors.values()])}')
 
         self.is_kmeans = False
         self.num_clusters = 4
