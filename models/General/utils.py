@@ -188,7 +188,7 @@ def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
         # denom = pos_sim + neg_sum.expand(-1, P)  # [B, P]
 
     margin = 0.2
-    loss = torch.mean(torch.clamp(neg_sim.mean(dim=1) - pos_sim + margin, min=0.0))
+    return torch.mean(torch.clamp(neg_sim.mean(dim=1) - pos_sim + margin, min=0.0))
     # Compute log-probabilities for positives
     log_prob = torch.log(pos_sim / (denom + 1e-8))  # [B, P]
 
