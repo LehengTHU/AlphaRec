@@ -396,8 +396,8 @@ class AbstractData:
             self.Graph = self._convert_sp_mat_to_sp_tensor(norm_adj)
             self.Graph = self.Graph.coalesce().to(self.device)
 
-        self.user_neighbors.update(get_user_neighbors_and_union_items(self.UserItemNet))
-        print(f'maximum number of excluded items:{np.array([v[2] for v in self.user_neighbors.values()]).max()}')
+        # self.user_neighbors.update(get_user_neighbors_and_union_items(self.UserItemNet))
+        # print(f'maximum number of excluded items:{np.array([v[2] for v in self.user_neighbors.values()]).max()}')
         return self.Graph
 
 
@@ -488,8 +488,8 @@ class TrainDataset(torch.utils.data.Dataset):
                 #     neg_items = list(np.array(neg_items) + self.nui_info[0][1] + self.nui_info[1][1])
 
             else:
-                neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.user_neighbors[user][1])
-                # neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.train_user_list[user])
+                # neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.user_neighbors[user][1])
+                neg_items = randint_choice(self.n_items, size=self.neg_sample, exclusion=self.train_user_list[user])
             neg_items_pop = self.item_pop_idx[neg_items]
 
             return user, pos_item, user_pop, pos_item_pop, torch.tensor(neg_items).long(), neg_items_pop, mask

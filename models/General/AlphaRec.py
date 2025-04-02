@@ -22,6 +22,8 @@ from .SparseMoE import SparseMoE
 from .utils import find_user_connected_components
 
 from scipy.sparse import csr_matrix
+
+
 class AlphaRec_RS(AbstractRS):
     def __init__(self, args, special_args) -> None:
         super().__init__(args, special_args)
@@ -121,7 +123,6 @@ class AlphaRec(AbstractModel):
             self.init_user_cf_embeds = nn.Embedding(self.data.n_users, self.init_embed_shape)
             nn.init.xavier_normal_(self.init_user_cf_embeds.weight)
 
-
         # cluster_dict, labels, n_components = find_user_connected_components(self.data.UserItemNet) did not work, since only one big component
         # from .utils import get_user_neighbors_and_union_items
         # user_neighbors = get_user_neighbors_and_union_items(self.data.UserItemNet)
@@ -172,6 +173,7 @@ class AlphaRec(AbstractModel):
         else:
             multiplier = 9 / 32  # for dimension = 4096
 
+        self.is_mlp_for_user = True
         if (self.model_version == 'homo'):  # Linear mapping
             self.mlp = nn.Sequential(
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
@@ -180,7 +182,6 @@ class AlphaRec(AbstractModel):
                 self.mlp_user = nn.Sequential(
                     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
                 )
-
         else:  # MLP
             if self.is_kmeans:
                 self.mlp = self.create_cluster_mlps(self.num_clusters, multiplier)
@@ -190,6 +191,12 @@ class AlphaRec(AbstractModel):
                     nn.LeakyReLU(),
                     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
                 )
+                if self.is_mlp_for_user:
+                    self.mlp_user = nn.Sequential(
+                        nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                        nn.LeakyReLU(),
+                        nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+                    )
 
                 # self.mlp = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
                 #                   d_out=self.embed_size)
@@ -217,6 +224,9 @@ class AlphaRec(AbstractModel):
                 )
             print('mlp:')
             print(self.mlp)
+            if self.is_mlp_for_user:
+                print('separate mlp for user is applied')
+                print(self.mlp_user)
 
     def create_cluster_mlps(self, num_clusters, multiplier):
         mlps = nn.ModuleList()
@@ -282,8 +292,12 @@ class AlphaRec(AbstractModel):
             users_emb = users_cf_emb
             items_emb = items_cf_emb
         else:
-            users_cf_emb = self.mlp(self.init_user_cf_embeds) if not self.random_user_emb \
-                else self.mlp_user(self.init_user_cf_embeds.weight)
+            if self.is_mlp_for_user:
+                users_cf_emb = self.mlp_user(self.init_user_cf_embeds)
+            elif self.random_user_emb:
+                users_cf_emb = self.mlp_user(self.init_user_cf_embeds.weight)
+            else:
+                users_cf_emb = self.mlp(self.init_user_cf_embeds)
 
             items_cf_emb = self.mlp(self.init_item_cf_embeds)
 
