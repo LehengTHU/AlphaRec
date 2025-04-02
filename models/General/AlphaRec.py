@@ -331,16 +331,17 @@ class AlphaRec(AbstractModel):
 
         light_out = torch.mean(embs, dim=1)
         users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
-
+        return users, items
         # users = self.mlp_user(users)
         # items = self.mlp_item(items)
-        users = self.mlp(users)
+        users = self.mlp_user(users)
         items = self.mlp(items)
 
         return users, items
 
     def forward(self, users, pos_items, neg_items, mask):
-
+        if self.training:
+            return torch.tensor(1.0, requires_grad=True)
         all_users, all_items = self.compute()
         # if not self.data.is_sample_pos_items:
         #     # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
