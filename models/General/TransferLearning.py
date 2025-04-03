@@ -128,7 +128,7 @@ class TransferLearning(AbstractModel):
         # user_neighbors = get_user_neighbors_and_union_items(self.data.UserItemNet)
         # print(f'maximum number of excluded items:{np.array([v[2] for v in user_neighbors.values()])}')
 
-        self.is_kmeans = True
+        self.is_kmeans = False
         self.is_hard = False
         self.num_clusters = 4
         if self.is_kmeans:
@@ -144,8 +144,7 @@ class TransferLearning(AbstractModel):
             if not self.is_hard:
                 self.user_cluster_labels = assign_users_to_centroids(self.init_user_cf_embeds, self.user_cf_centroids,
                                                                      self.is_hard)
-            print('labels:')
-            print(self.user_cluster_labels)
+
             # Assign cluster labels to users based on item centroids
             # self.user_cluster_labels = assign_users_to_centroids(self.init_user_cf_embeds, self.item_cf_centroids)
 
@@ -203,16 +202,22 @@ class TransferLearning(AbstractModel):
 
         self.is_mlp_for_user = True
         if (self.model_version == 'homo'):  # Linear mapping
+            # self.mlp = nn.Sequential(
+            #     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+            # )
             self.mlp = nn.Sequential(
-                nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                nn.Linear(self.init_embed_shape, self.init_embed_shape, bias=False)  # homo
             )
             if self.random_user_emb:
                 self.mlp_user = nn.Sequential(
                     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
                 )
             if self.is_mlp_for_user:
+                # self.mlp_user = nn.Sequential(
+                #     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                # )
                 self.mlp_user = nn.Sequential(
-                    nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                    nn.Linear(self.init_embed_shape, self.init_embed_shape, bias=False)  # homo
                 )
         else:  # MLP
 
