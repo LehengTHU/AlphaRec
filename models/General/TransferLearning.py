@@ -154,12 +154,16 @@ class TransferLearning(AbstractModel):
             self.init_user_cf_embeds = nn.Parameter(self.init_user_cf_embeds)
 
         self.k = 8
-        self.is_batch_ens = False
+        self.is_batch_ens = True
         if self.is_batch_ens:
             print(f'+ adapter; k = {self.k}')
             self.r = nn.Parameter(
                 torch.empty(self.k, self.init_embed_shape, device=self.device))
             nn.init.xavier_normal_(self.r)
+
+            self.r_user = nn.Parameter(
+                torch.empty(self.k, self.init_embed_shape, device=self.device))
+            nn.init.xavier_normal_(self.r_user)
 
         # To keep the same parameter size
         multiplier_dict = {
@@ -351,8 +355,32 @@ class TransferLearning(AbstractModel):
         # # return users, items
         # # users = self.mlp_user(users)
         # # items = self.mlp_item(items)
-        users = self.mlp_user(self.init_user_cf_embeds)
-        items = self.mlp(self.init_item_cf_embeds)
+
+        if self.is_batch_ens:
+            def run_mlp(x, n_elements, mlp, r):
+                # users_cf_emb = self.mlp(self.init_user_cf_embeds) no need
+                # Expand input: (E, B, D)
+                x_expanded = x.unsqueeze(0).expand(self.k, n_elements,
+                                                   self.init_embed_shape)  # (E, B, D)
+                r_expanded = r.unsqueeze(1)  # (E, 1, D)
+
+                # Element-wise multiply
+                x_scaled = x_expanded * r_expanded  # (E, B, D)
+
+                # Flatten for processing through shared MLP
+                x_flat = x_scaled.reshape(self.k * n_elements, self.init_embed_shape)
+
+                # Shared MLP
+                emb = mlp(x_flat)
+
+                # Reshape back
+                return emb.view(self.k, n_elements, -1).mean(dim=0)  # (E, B, output_dim)
+
+            users = run_mlp(self.init_user_cf_embeds, self.data.n_users, self.mlp_user, self.r_user)
+            items = run_mlp(self.init_item_cf_embeds, self.data.n_items, self.mlp, self.r)
+        else:
+            users = self.mlp_user(self.init_user_cf_embeds)
+            items = self.mlp(self.init_item_cf_embeds)
 
         return users, items
 
