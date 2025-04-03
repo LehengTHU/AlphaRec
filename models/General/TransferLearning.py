@@ -208,27 +208,27 @@ class TransferLearning(AbstractModel):
                     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
                 )
         else:  # MLP
-            if self.is_kmeans:
-                self.mlp = self.create_cluster_mlps(self.num_clusters, multiplier)
-            else:
-                # self.mlp = nn.Sequential(
-                #     nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-                #     nn.LeakyReLU(),
-                #     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-                # )
 
-                self.mlp = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
-                                  d_out=self.embed_size)
+            self.mlp = nn.Sequential(
+                nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                nn.LeakyReLU(),
+                nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+            )
 
-                if self.is_mlp_for_user:
-                    self.mlp_user = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
-                                      d_out=self.embed_size)
+            # self.mlp = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
+            #                   d_out=self.embed_size)
 
-                    # self.mlp_user = nn.Sequential(
-                    #     nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
-                    #     nn.LeakyReLU(),
-                    #     nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
-                    # )
+            if self.is_mlp_for_user:
+                # self.mlp_user = Expert(d_in=self.init_embed_shape, d_inter=int(multiplier * self.init_embed_shape),
+                #                   d_out=self.embed_size)
+                if self.is_kmeans:
+                    self.mlp_user = self.create_cluster_mlps(self.num_clusters, multiplier)
+                else:
+                    self.mlp_user = nn.Sequential(
+                        nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                        nn.LeakyReLU(),
+                        nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+                    )
 
                 # self.mlp = MoE(d_in=self.init_embed_shape,
                 #            d_out=self.embed_size,
@@ -404,7 +404,16 @@ class TransferLearning(AbstractModel):
             users = run_mlp(self.init_user_cf_embeds, self.data.n_users, self.mlp_user, self.r_user)
             items = run_mlp(self.init_item_cf_embeds, self.data.n_items, self.mlp, self.r)
         else:
-            users = self.mlp_user(self.init_user_cf_embeds)
+            if self.is_kmeans:
+                users = apply_cluster_mlps(
+                        self.init_user_cf_embeds,
+                        self.user_cluster_labels,
+                        self.mlp_user,
+                        num_clusters=self.num_clusters
+                    )
+            else:
+                users = self.mlp_user(self.init_user_cf_embeds)
+
             items = self.mlp(self.init_item_cf_embeds)
 
         return users, items
