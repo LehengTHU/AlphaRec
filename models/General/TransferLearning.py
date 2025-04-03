@@ -128,23 +128,39 @@ class TransferLearning(AbstractModel):
         # user_neighbors = get_user_neighbors_and_union_items(self.data.UserItemNet)
         # print(f'maximum number of excluded items:{np.array([v[2] for v in user_neighbors.values()])}')
 
-        self.is_kmeans = False
+        self.is_kmeans = True
         self.num_clusters = 4
         if self.is_kmeans:
             # Apply KMeans with dot product
-            self.item_cluster_labels, centroids = kmeans_dot_product(self.init_item_cf_embeds,
+            self.user_cluster_labels, centroids = kmeans_dot_product(self.init_user_cf_embeds,
                                                                      num_clusters=self.num_clusters)
             # Save the centroids
-            self.item_cf_centroids = centroids  # shape: (self.num_clusters, embedding_dim)
-            self.item_cf_cluster_labels = self.item_cluster_labels  # shape: (num_items,)
-            count_cluster_sizes(self.item_cluster_labels, num_clusters=self.num_clusters)
+            self.user_cf_centroids = centroids  # shape: (self.num_clusters, embedding_dim)
+            self.user_cf_cluster_labels = self.user_cluster_labels  # shape: (num_items,)
+            count_cluster_sizes(self.user_cluster_labels, num_clusters=self.num_clusters)
 
             # Assign cluster labels to users based on item centroids
-            self.user_cluster_labels = assign_users_to_centroids(self.init_user_cf_embeds, self.item_cf_centroids)
+            # self.user_cluster_labels = assign_users_to_centroids(self.init_user_cf_embeds, self.item_cf_centroids)
 
             # Optional: print how many users per cluster
-            print('users:')
-            count_cluster_sizes(self.user_cluster_labels, num_clusters=self.num_clusters)
+            # print('users:')
+            # count_cluster_sizes(self.user_cluster_labels, num_clusters=self.num_clusters)
+
+        # if self.is_kmeans:
+        #     # Apply KMeans with dot product
+        #     self.item_cluster_labels, centroids = kmeans_dot_product(self.init_item_cf_embeds,
+        #                                                              num_clusters=self.num_clusters)
+        #     # Save the centroids
+        #     self.item_cf_centroids = centroids  # shape: (self.num_clusters, embedding_dim)
+        #     self.item_cf_cluster_labels = self.item_cluster_labels  # shape: (num_items,)
+        #     count_cluster_sizes(self.item_cluster_labels, num_clusters=self.num_clusters)
+        #
+        #     # Assign cluster labels to users based on item centroids
+        #     self.user_cluster_labels = assign_users_to_centroids(self.init_user_cf_embeds, self.item_cf_centroids)
+        #
+        #     # Optional: print how many users per cluster
+        #     print('users:')
+        #     count_cluster_sizes(self.user_cluster_labels, num_clusters=self.num_clusters)
 
         self.set_graph_embeddings()
         self.is_embeds_learnable = False
