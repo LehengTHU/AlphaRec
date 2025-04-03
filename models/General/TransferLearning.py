@@ -154,7 +154,7 @@ class TransferLearning(AbstractModel):
             self.init_user_cf_embeds = nn.Parameter(self.init_user_cf_embeds)
 
         self.k = 8
-        self.is_batch_ens = True
+        self.is_batch_ens = False
         if self.is_batch_ens:
             print(f'+ adapter; k = {self.k}')
             self.r = nn.Parameter(
@@ -184,6 +184,10 @@ class TransferLearning(AbstractModel):
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
             if self.random_user_emb:
+                self.mlp_user = nn.Sequential(
+                    nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+                )
+            if self.is_mlp_for_user:
                 self.mlp_user = nn.Sequential(
                     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
                 )
@@ -227,11 +231,11 @@ class TransferLearning(AbstractModel):
                 self.mlp_user = nn.Sequential(
                     nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
                 )
-            print('mlp:')
-            print(self.mlp)
-            if self.is_mlp_for_user:
-                print('separate mlp for user is applied')
-                print(self.mlp_user)
+        print('mlp:')
+        print(self.mlp)
+        if self.is_mlp_for_user:
+            print('separate mlp for user is applied')
+            print(self.mlp_user)
 
             # self.mlp_user = nn.Sequential(
             #     nn.Linear(self.emb_dim, self.emb_dim),
