@@ -39,7 +39,7 @@ class Expert(nn.Module):
         return self.w2(F.silu(self.w1(x)) * self.w3(x))
 
 
-def kmeans_dot_product(x, num_clusters, num_iters=100):
+def kmeans_dot_product(x, num_clusters, num_iters=1000):
     """
     KMeans clustering using dot product similarity, with centroid change reporting.
     x: Tensor of shape (n_samples, embed_dim), unnormalized
@@ -84,41 +84,98 @@ def count_cluster_sizes(labels, num_clusters):
     return counts
 
 
-def assign_users_to_centroids(user_embeds, centroids):
-    """
-    Assign each user to the nearest item centroid using dot product similarity.
-    """
-    # user_embeds: (num_users, embed_dim)
-    # centroids: (num_clusters, embed_dim)
+import torch
+import torch.nn.functional as F
 
+def assign_users_to_centroids(user_embeds, centroids, hard=True):
+    """
+    Assign users to item centroids using dot product similarity.
+
+    Args:
+        user_embeds (Tensor): User embeddings, shape (num_users, embed_dim)
+        centroids (Tensor): Centroid embeddings, shape (num_clusters, embed_dim)
+        hard (bool): If True, return hard assignments (argmax);
+                     if False, return soft assignments (probabilities)
+
+    Returns:
+        Tensor:
+            If hard=True: shape (num_users,), containing cluster indices.
+            If hard=False: shape (num_users, num_clusters), containing probabilities.
+    """
     # Compute dot product similarity
     sim = torch.matmul(user_embeds, centroids.T)  # shape: (num_users, num_clusters)
 
-    # Assign each user to the most similar centroid
-    user_labels = torch.argmax(sim, dim=1)
+    if hard:
+        # Hard assignment: return cluster index with highest similarity
+        user_labels = torch.argmax(sim, dim=1)  # shape: (num_users,)
+    else:
+        # Soft assignment: return softmax probabilities over clusters
+        user_labels = F.softmax(sim, dim=1)  # shape: (num_users, num_clusters)
 
     return user_labels
 
 
-def apply_cluster_mlps(embeds, cluster_labels, mlps, num_clusters):
+# def apply_cluster_mlps(embeds, cluster_labels, mlps, num_clusters):
+#     """
+#     Apply cluster-specific MLPs to embeddings in batch per cluster.
+#
+#     embeds: (N, embed_dim)
+#     cluster_labels: (N,) with values in [0, num_clusters-1]
+#     mlps: list or ModuleList of MLPs
+#     """
+#     output = torch.zeros((embeds.size(0), mlps[0][-1].out_features), device=embeds.device)
+#
+#     for cluster_id in range(num_clusters):
+#         indices = (cluster_labels == cluster_id).nonzero(as_tuple=True)[0]
+#         if indices.numel() == 0:
+#             continue
+#         cluster_embeds = embeds[indices]
+#         output[indices] = mlps[cluster_id](cluster_embeds)
+#
+#     return output
+def apply_cluster_mlps(embeds, cluster_labels, mlps, num_clusters, hard=True):
     """
-    Apply cluster-specific MLPs to embeddings in batch per cluster.
+    Apply cluster-specific MLPs to embeddings using hard or soft assignment.
 
-    embeds: (N, embed_dim)
-    cluster_labels: (N,) with values in [0, num_clusters-1]
-    mlps: list or ModuleList of MLPs
+    Args:
+        embeds: Tensor of shape (N, embed_dim)
+        cluster_labels:
+            If hard=True: LongTensor of shape (N,) with values in [0, num_clusters-1]
+            If hard=False: FloatTensor of shape (N, num_clusters) with soft probabilities
+        mlps: list or ModuleList of MLPs (one per cluster)
+        num_clusters: int
+        hard: bool
+
+    Returns:
+        output: Tensor of shape (N, output_dim)
     """
-    output = torch.zeros((embeds.size(0), mlps[0][-1].out_features), device=embeds.device)
+    N = embeds.size(0)
+    output_dim = mlps[0][-1].out_features
+    device = embeds.device
 
-    for cluster_id in range(num_clusters):
-        indices = (cluster_labels == cluster_id).nonzero(as_tuple=True)[0]
-        if indices.numel() == 0:
-            continue
-        cluster_embeds = embeds[indices]
-        output[indices] = mlps[cluster_id](cluster_embeds)
+    if hard:
+        output = torch.zeros((N, output_dim), device=device)
+        for cluster_id in range(num_clusters):
+            indices = (cluster_labels == cluster_id).nonzero(as_tuple=True)[0]
+            if indices.numel() == 0:
+                continue
+            cluster_embeds = embeds[indices]
+            output[indices] = mlps[cluster_id](cluster_embeds)
+    else:
+        # Process all MLPs in one go for soft labels
+        # Compute (N, output_dim) for each cluster and stack them: (num_clusters, N, output_dim)
+        outputs = torch.stack([mlp(embeds) for mlp in mlps], dim=0)  # shape: (num_clusters, N, output_dim)
+
+        # Transpose to (N, num_clusters, output_dim)
+        outputs = outputs.permute(1, 0, 2)
+
+        # cluster_labels: (N, num_clusters) -> unsqueeze to (N, num_clusters, 1)
+        probs = cluster_labels.unsqueeze(2)
+
+        # Weighted sum over clusters -> (N, output_dim)
+        output = torch.sum(outputs * probs, dim=1)
 
     return output
-
 
 def supcon_loss(user_emb, pos_item_embs, neg_item_embs, mask, tau, neg_sample):
     """

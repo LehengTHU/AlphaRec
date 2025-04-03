@@ -129,16 +129,23 @@ class TransferLearning(AbstractModel):
         # print(f'maximum number of excluded items:{np.array([v[2] for v in user_neighbors.values()])}')
 
         self.is_kmeans = True
+        self.is_hard = False
         self.num_clusters = 4
         if self.is_kmeans:
             # Apply KMeans with dot product
             self.user_cluster_labels, centroids = kmeans_dot_product(self.init_user_cf_embeds,
                                                                      num_clusters=self.num_clusters)
+
             # Save the centroids
             self.user_cf_centroids = centroids  # shape: (self.num_clusters, embedding_dim)
             self.user_cf_cluster_labels = self.user_cluster_labels  # shape: (num_items,)
             count_cluster_sizes(self.user_cluster_labels, num_clusters=self.num_clusters)
 
+            if not self.is_hard:
+                self.user_cluster_labels = assign_users_to_centroids(self.init_user_cf_embeds, self.user_cf_centroids,
+                                                                     self.is_hard)
+            print('labels:')
+            print(self.user_cluster_labels)
             # Assign cluster labels to users based on item centroids
             # self.user_cluster_labels = assign_users_to_centroids(self.init_user_cf_embeds, self.item_cf_centroids)
 
@@ -301,7 +308,8 @@ class TransferLearning(AbstractModel):
         embs = torch.stack(embs, dim=1)
 
         light_out = torch.mean(embs, dim=1)
-        self.init_user_cf_embeds, self.init_item_cf_embeds = torch.split(light_out, [self.data.n_users, self.data.n_items])
+        self.init_user_cf_embeds, self.init_item_cf_embeds = torch.split(light_out,
+                                                                         [self.data.n_users, self.data.n_items])
 
     def compute(self):
         # if self.is_batch_ens:
@@ -406,11 +414,12 @@ class TransferLearning(AbstractModel):
         else:
             if self.is_kmeans:
                 users = apply_cluster_mlps(
-                        self.init_user_cf_embeds,
-                        self.user_cluster_labels,
-                        self.mlp_user,
-                        num_clusters=self.num_clusters
-                    )
+                    self.init_user_cf_embeds,
+                    self.user_cluster_labels,
+                    self.mlp_user,
+                    num_clusters=self.num_clusters,
+                    hard=self.is_hard
+                )
             else:
                 users = self.mlp_user(self.init_user_cf_embeds)
 
