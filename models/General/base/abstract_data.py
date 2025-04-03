@@ -79,7 +79,7 @@ class AbstractData:
 
         self.user_neighbors = {}
 
-        self.is_sample_pos_items = args.is_sample_pos_items
+        self.is_one_pos_item = args.is_one_pos_item
         self.n_pos_samples = int(args.n_pos_samples)
         self.path = args.data_path + args.dataset + '/cf_data/'
         self.train_file = self.path + 'train.txt'
@@ -198,7 +198,8 @@ class AbstractData:
             else:
                 if i in self.test_user_list.keys():
                     self.n_interactions += len(self.test_user_list[i])
-        print('average number observations per a user: ', 1.0 * self.n_observations / self.n_users)
+        print('average number observations per a user: ',
+              1.0 * self.n_observations / self.n_users)  # TODO: calculate here percentiles and set up n_pos_samples as X% percentile
         # Population matrix
         pop_dict = {}
         for item, users in self.train_item_list.items():
@@ -337,7 +338,7 @@ class AbstractData:
         self.train_data = TrainDataset(self.model_name, self.users, self.train_user_list, self.user_pop_idx,
                                        self.item_pop_idx, \
                                        self.neg_sample, self.n_observations, self.n_items, self.sample_items,
-                                       self.infonce, self.items, self.nu_info, self.ni_info, self.is_sample_pos_items,
+                                       self.infonce, self.items, self.nu_info, self.ni_info, self.is_one_pos_item,
                                        n_pos_samples=self.n_pos_samples, user_neighbors=self.user_neighbors)
 
         self.train_loader = DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True,
@@ -405,10 +406,10 @@ class TrainDataset(torch.utils.data.Dataset):
 
     def __init__(self, model_name, users, train_user_list, user_pop_idx, item_pop_idx, neg_sample, \
                  n_observations, n_items, sample_items, infonce, items, nu_info=None, ni_info=None,
-                 is_sample_pos_items=True, n_pos_samples=15, user_neighbors=None):
-        self.is_sample_pos_items = is_sample_pos_items  # whether sample only 1 item
+                 is_one_pos_item=True, n_pos_samples=15, user_neighbors=None):
+        self.is_one_pos_item = is_one_pos_item  # whether sample only 1 item
         self.user_neighbors = user_neighbors
-        if not self.is_sample_pos_items:
+        if not self.is_one_pos_item:
             self.n_pos_samples = n_pos_samples
             print('multiple positive samples are applied')
             print(f'number of positive samples:{n_pos_samples}')
@@ -438,7 +439,7 @@ class TrainDataset(torch.utils.data.Dataset):
             pos_items = 0
             mask = 0
         else:
-            if self.is_sample_pos_items:
+            if self.is_one_pos_item:
                 pos_item = rd.choice(self.train_user_list[user])
                 mask = 1
             else:
@@ -452,7 +453,7 @@ class TrainDataset(torch.utils.data.Dataset):
                 pos_item = torch.tensor(pos_item).long()
         # print(pos_item)
         user_pop = self.user_pop_idx[user]
-        if self.is_sample_pos_items:
+        if self.is_one_pos_item:
             pos_item_pop = self.item_pop_idx[pos_item]
         else:
             # TODO: it does not make a difference for alpharec, but for others will

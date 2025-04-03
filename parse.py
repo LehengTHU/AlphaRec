@@ -138,7 +138,7 @@ def parse_args():
             parser.add_argument('--random_user_emb', action='store_true',
                                 help='Use random user embeddings instead of averaging items (default: False)')
 
-            parser.add_argument('--is_sample_pos_items', action='store_false',
+            parser.add_argument('--is_one_pos_item', action='store_true',
                                 help='True then only one positive sample is used')
             parser.add_argument('--n_pos_samples', type=int, default=5,
                                 help='number of positive samples')

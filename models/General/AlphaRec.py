@@ -343,7 +343,7 @@ class AlphaRec(AbstractModel):
         # if self.training:
         #     return torch.tensor(1.0, requires_grad=True)
         all_users, all_items = self.compute()
-        # if not self.data.is_sample_pos_items:
+        # if not self.data.is_one_pos_item:
         #     # padding index = -1; -> Step 1: Append a padding embedding at the end of all_items
         #     # TODO: is that okay?
         #     padding_emb = torch.zeros((1, all_items.size(1)), device=all_items.device).detach()
@@ -357,7 +357,7 @@ class AlphaRec(AbstractModel):
         pos_emb = all_items[pos_items]
         neg_emb = all_items[neg_items]
 
-        if not self.data.is_sample_pos_items:
+        if not self.data.is_one_pos_item:
             return supcon_loss(users_emb, pos_emb, neg_emb, mask, self.tau, 0)
 
         if (self.train_norm):
@@ -370,7 +370,7 @@ class AlphaRec(AbstractModel):
 
         pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
         numerator = torch.exp(pos_ratings / self.tau)
-        # if self.data.is_sample_pos_items:
+        # if self.data.is_one_pos_item:
         #     pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
         #     numerator = torch.exp(pos_ratings / self.tau)
         # else:
@@ -378,7 +378,7 @@ class AlphaRec(AbstractModel):
         #                             dim=-1)  # [B, L]
         #     numerator = torch.sum(torch.exp(pos_ratings / self.tau) * mask, dim=-1)  # [B]
 
-        # if self.data.is_sample_pos_items:
+        # if self.data.is_one_pos_item:
         #     neg_ratings = neg_ratings.squeeze(dim=1)
         # else:
         #     pass
@@ -387,7 +387,7 @@ class AlphaRec(AbstractModel):
         denominator = numerator + torch.sum(torch.exp(neg_ratings / self.tau), dim=2)
 
         ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
-        # if self.data.is_sample_pos_items:
+        # if self.data.is_one_pos_item:
         #     ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
         # else:
         #     print((1.0/n_items_per_user).shape)
