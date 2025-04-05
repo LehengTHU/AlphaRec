@@ -120,7 +120,7 @@ def parse_args():
 
         # AlphaRec
         if (('IntentCF' in args.model_name) or ('AlphaRec' in args.model_name) or (
-                'TransferLearning' in args.model_name)):
+                'TransferLearning' in args.model_name) or ('TFCE' in args.model_name)):
             parser.add_argument('--tau', type=float, default=0.1,
                                 help='temperature parameter')
             parser.add_argument('--lm_model', type=str, default='v3',
