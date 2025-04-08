@@ -51,7 +51,6 @@ class TFCEMLP_Data(AbstractData):
 
     def add_special_model_attr(self, args):
         self.lm_model = args.lm_model
-        self.random_user_emb: bool = args.random_user_emb
         loading_path = args.data_path + args.dataset + '/item_info/'
         embedding_path_dict = {
             'bert': 'item_cf_embeds_bert_array.npy',
@@ -69,27 +68,26 @@ class TFCEMLP_Data(AbstractData):
         }
         self.item_cf_embeds = np.load(loading_path + embedding_path_dict[self.lm_model])
 
-        # self.train_user_list
-        if not self.random_user_emb:
-            def group_agg(group_data, embedding_dict, key='item_id'):
-                ids = group_data[key].values
-                embeds = [embedding_dict[id] for id in ids]
-                embeds = np.array(embeds)
-                return embeds.mean(axis=0)
 
-            pairs = []
-            for u, v in self.train_user_list.items():
-                for i in v:
-                    pairs.append((u, i))
-            pairs = pd.DataFrame(pairs, columns=['user_id', 'item_id'])
+        def group_agg(group_data, embedding_dict, key='item_id'):
+            ids = group_data[key].values
+            embeds = [embedding_dict[id] for id in ids]
+            embeds = np.array(embeds)
+            return embeds.mean(axis=0)
 
-            # User CF Embedding: the average of item embeddings
-            groups = pairs.groupby('user_id')
-            item_cf_embeds_dict = {i: self.item_cf_embeds[i] for i in range(len(self.item_cf_embeds))}
-            user_cf_embeds = groups.apply(group_agg, embedding_dict=item_cf_embeds_dict, key='item_id')
-            user_cf_embeds_dict = user_cf_embeds.to_dict()
-            user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
-            self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))  # TODO: random init embeddings
+        pairs = []
+        for u, v in self.train_user_list.items():
+            for i in v:
+                pairs.append((u, i))
+        pairs = pd.DataFrame(pairs, columns=['user_id', 'item_id'])
+
+        # User CF Embedding: the average of item embeddings
+        groups = pairs.groupby('user_id')
+        item_cf_embeds_dict = {i: self.item_cf_embeds[i] for i in range(len(self.item_cf_embeds))}
+        user_cf_embeds = groups.apply(group_agg, embedding_dict=item_cf_embeds_dict, key='item_id')
+        user_cf_embeds_dict = user_cf_embeds.to_dict()
+        user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
+        self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))  # TODO: random init embeddings
 
 
 class TFCEMLP(AbstractModel):
@@ -99,24 +97,14 @@ class TFCEMLP(AbstractModel):
         self.embed_size = args.hidden_size
         self.lm_model = args.lm_model
         self.model_version = args.model_version
-        self.random_user_emb: bool = args.random_user_emb
 
         self.init_item_cf_embeds = data.item_cf_embeds
         self.init_item_cf_embeds = torch.tensor(self.init_item_cf_embeds, dtype=torch.float32).to(self.device)
         self.init_embed_shape = self.init_item_cf_embeds.shape[1]
 
-        if not self.random_user_emb:
-            self.init_user_cf_embeds = data.user_cf_embeds
-            self.init_user_cf_embeds = torch.tensor(self.init_user_cf_embeds, dtype=torch.float32).to(self.device)
-        else:
-            print('user embeddings were initalized randomly')
-            self.init_user_cf_embeds = nn.Embedding(self.data.n_users, self.init_embed_shape)
-            nn.init.xavier_normal_(self.init_user_cf_embeds.weight)
+        self.init_user_cf_embeds = data.user_cf_embeds
+        self.init_user_cf_embeds = torch.tensor(self.init_user_cf_embeds, dtype=torch.float32).to(self.device)
 
-        # cluster_dict, labels, n_components = find_user_connected_components(self.data.UserItemNet) did not work, since only one big component
-        # from .utils import get_user_neighbors_and_union_items
-        # user_neighbors = get_user_neighbors_and_union_items(self.data.UserItemNet)
-        # print(f'maximum number of excluded items:{np.array([v[2] for v in user_neighbors.values()])}')
 
 
         self.set_graph_embeddings()

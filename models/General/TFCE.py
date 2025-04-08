@@ -13,14 +13,6 @@ from tqdm import tqdm
 from .base.evaluator import ProxyEvaluator
 from .base.utils import *
 
-from functools import partial
-from .MoE import MoE
-from .utils import Expert, kmeans_dot_product, apply_cluster_mlps, assign_users_to_centroids, count_cluster_sizes, \
-    supcon_loss
-
-from .SparseMoE import SparseMoE
-from .utils import find_user_connected_components
-
 from scipy.sparse import csr_matrix
 import os
 import json
@@ -74,8 +66,27 @@ class TFCE_RS(AbstractRS):
 
         self.model.train()
 
-    def recommend_top_k(self):
-        pass
+    def execute(self):
+
+        self.save_args()  # save the args
+        # write args
+        perf_str = str(self.args)
+        with open(self.base_path + 'stats.txt', 'a') as f:
+            f.write(perf_str + "\n")
+
+        self.model, self.start_epoch = self.restore_checkpoint(self.model, self.base_path,
+                                                               self.device)  # restore the checkpoint
+
+        start_time = time.time()
+        # train the model if not test only
+        if not self.test_only:
+            print("start training")
+            self.train()
+            # test the model
+
+        end_time = time.time()
+        print(f'training time: {end_time - start_time}')
+
 
 
 class TFCE_Data(AbstractData):
@@ -84,7 +95,6 @@ class TFCE_Data(AbstractData):
 
     def add_special_model_attr(self, args):
         self.lm_model = args.lm_model
-        self.random_user_emb: bool = args.random_user_emb
         loading_path = args.data_path + args.dataset + '/item_info/'
         embedding_path_dict = {
             'bert': 'item_cf_embeds_bert_array.npy',
@@ -103,26 +113,26 @@ class TFCE_Data(AbstractData):
         self.item_cf_embeds = np.load(loading_path + embedding_path_dict[self.lm_model])
 
         # self.train_user_list
-        if not self.random_user_emb:
-            def group_agg(group_data, embedding_dict, key='item_id'):
-                ids = group_data[key].values
-                embeds = [embedding_dict[id] for id in ids]
-                embeds = np.array(embeds)
-                return embeds.mean(axis=0)
 
-            pairs = []
-            for u, v in self.train_user_list.items():
-                for i in v:
-                    pairs.append((u, i))
-            pairs = pd.DataFrame(pairs, columns=['user_id', 'item_id'])
+        def group_agg(group_data, embedding_dict, key='item_id'):
+            ids = group_data[key].values
+            embeds = [embedding_dict[id] for id in ids]
+            embeds = np.array(embeds)
+            return embeds.mean(axis=0)
 
-            # User CF Embedding: the average of item embeddings
-            groups = pairs.groupby('user_id')
-            item_cf_embeds_dict = {i: self.item_cf_embeds[i] for i in range(len(self.item_cf_embeds))}
-            user_cf_embeds = groups.apply(group_agg, embedding_dict=item_cf_embeds_dict, key='item_id')
-            user_cf_embeds_dict = user_cf_embeds.to_dict()
-            user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
-            self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))  # TODO: random init embeddings
+        pairs = []
+        for u, v in self.train_user_list.items():
+            for i in v:
+                pairs.append((u, i))
+        pairs = pd.DataFrame(pairs, columns=['user_id', 'item_id'])
+
+        # User CF Embedding: the average of item embeddings
+        groups = pairs.groupby('user_id')
+        item_cf_embeds_dict = {i: self.item_cf_embeds[i] for i in range(len(self.item_cf_embeds))}
+        user_cf_embeds = groups.apply(group_agg, embedding_dict=item_cf_embeds_dict, key='item_id')
+        user_cf_embeds_dict = user_cf_embeds.to_dict()
+        user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
+        self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))
 
 
 class TFCE(AbstractModel):
@@ -132,19 +142,13 @@ class TFCE(AbstractModel):
         self.embed_size = args.hidden_size
         self.lm_model = args.lm_model
         self.model_version = args.model_version
-        self.random_user_emb: bool = args.random_user_emb
 
         self.init_item_cf_embeds = data.item_cf_embeds
         self.init_item_cf_embeds = torch.tensor(self.init_item_cf_embeds, dtype=torch.float32).to(self.device)
         self.init_embed_shape = self.init_item_cf_embeds.shape[1]
 
-        if not self.random_user_emb:
-            self.init_user_cf_embeds = data.user_cf_embeds
-            self.init_user_cf_embeds = torch.tensor(self.init_user_cf_embeds, dtype=torch.float32).to(self.device)
-        else:
-            print('user embeddings were initalized randomly')
-            self.init_user_cf_embeds = nn.Embedding(self.data.n_users, self.init_embed_shape)
-            nn.init.xavier_normal_(self.init_user_cf_embeds.weight)
+        self.init_user_cf_embeds = data.user_cf_embeds
+        self.init_user_cf_embeds = torch.tensor(self.init_user_cf_embeds, dtype=torch.float32).to(self.device)
 
         self.set_graph_embeddings()
 
