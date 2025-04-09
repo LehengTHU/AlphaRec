@@ -25,7 +25,7 @@ class AbstractRS(nn.Module):
         # basic information
         self.args = args
         self.special_args = special_args
-        self.device = torch.device(args.cuda)
+        self.device = torch.device(f"cuda:{args.cuda}" if args.cuda != -1 and torch.cuda.is_available() else "cpu")
         self.test_only = args.test_only
         self.candidate = args.candidate
 
@@ -62,9 +62,9 @@ class AbstractRS(nn.Module):
         self.n_items = self.data.n_items
         self.train_user_list = self.data.train_user_list
         self.valid_user_list = self.data.valid_user_list
-        # = torch.tensor(self.data.population_list).cuda(self.device)
-        self.user_pop = torch.tensor(self.data.user_pop_idx).type(torch.LongTensor).cuda(self.device)
-        self.item_pop = torch.tensor(self.data.item_pop_idx).type(torch.LongTensor).cuda(self.device)
+        # = torch.tensor(self.data.population_list).to(self.device)
+        self.user_pop = torch.tensor(self.data.user_pop_idx).type(torch.LongTensor).to(self.device)
+        self.item_pop = torch.tensor(self.data.item_pop_idx).type(torch.LongTensor).to(self.device)
         self.user_pop_max = self.data.user_pop_max
         self.item_pop_max = self.data.item_pop_max 
 
@@ -74,7 +74,7 @@ class AbstractRS(nn.Module):
         # self.model = IntentCF(args, self.data) # initialize the model with the graph
         exec('from models.General.'+ args.model_name + ' import ' + self.running_model) # import the model first
         self.model = eval(self.running_model + '(args, self.data)') # initialize the model with the graph
-        self.model.cuda(self.device)
+        self.model.to(self.device)
 
         # preparing for saving
         self.preperation_for_saving(args, special_args)
@@ -104,19 +104,21 @@ class AbstractRS(nn.Module):
             print("start testing")
             self.model = self.restore_best_checkpoint(self.data.best_valid_epoch, self.model, self.base_path, self.device)
         end_time = time.time()
+        print(f'training time: {end_time - start_time}')
         self.model.eval() # evaluate the best model
         print_str = "The best epoch is % d, total training cost is %.1f" % (max(self.data.best_valid_epoch, self.start_epoch), end_time - start_time)
         with open(self.base_path +'stats.txt', 'a') as f:
             f.write(print_str + "\n")
 
         n_rets = {}
+        start_time = time.time()
         for i,evaluator in enumerate(self.evaluators[:]):
             _, __, n_ret = evaluation(self.args, self.data, self.model, self.data.best_valid_epoch, self.base_path, evaluator, self.eval_names[i])
             n_rets[self.eval_names[i]] = n_ret
-
+        end_time = time.time()
+        print(f'evaluation time: {end_time - start_time}')
         self.recommend_top_k()
         # self.document_hyper_params_results(self.base_path, n_rets)
-        
 
     def save_args(self):
         # save the args
@@ -136,6 +138,7 @@ class AbstractRS(nn.Module):
             t1=time.time()
             losses = self.train_one_epoch(epoch) # train one epoch
             t2=time.time()
+            print(f'epoch={epoch};  loss={losses}')
             self.document_running_loss(losses, epoch, t2-t1) # report the loss
             if (epoch + 1) % self.verbose == 0: # evaluate the model
                 self.eval_and_check_early_stop(epoch)

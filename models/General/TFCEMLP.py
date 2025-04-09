@@ -13,10 +13,8 @@ from tqdm import tqdm
 from .base.evaluator import ProxyEvaluator
 from .base.utils import *
 
-from functools import partial
 
-
-class AlphaRec_RS(AbstractRS):
+class TFCEMLP_RS(AbstractRS):
     def __init__(self, args, special_args) -> None:
         super().__init__(args, special_args)
 
@@ -25,9 +23,9 @@ class AlphaRec_RS(AbstractRS):
 
         pbar = tqdm(enumerate(self.data.train_loader), mininterval=2, total=len(self.data.train_loader))
         for batch_i, batch in pbar:
-
             batch = [x.to(self.device) for x in batch]
-            users, pos_items, users_pop, pos_items_pop = batch[0], batch[1], batch[2], batch[3]
+            users, pos_items, users_pop, pos_items_pop, mask = batch[0], batch[1], batch[2], batch[3], \
+                batch[6]
 
             if self.args.infonce == 0 or self.args.neg_sample != -1:
                 neg_items = batch[4]
@@ -35,7 +33,7 @@ class AlphaRec_RS(AbstractRS):
 
             self.model.train()
 
-            loss = self.model(users, pos_items, neg_items)
+            loss = self.model(users, pos_items, neg_items, mask)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -47,7 +45,7 @@ class AlphaRec_RS(AbstractRS):
         return [running_loss / num_batches]
 
 
-class AlphaRec_Data(AbstractData):
+class TFCEMLP_Data(AbstractData):
     def __init__(self, args):
         super().__init__(args)
 
@@ -70,13 +68,13 @@ class AlphaRec_Data(AbstractData):
         }
         self.item_cf_embeds = np.load(loading_path + embedding_path_dict[self.lm_model])
 
+
         def group_agg(group_data, embedding_dict, key='item_id'):
             ids = group_data[key].values
             embeds = [embedding_dict[id] for id in ids]
             embeds = np.array(embeds)
             return embeds.mean(axis=0)
 
-        # self.train_user_list
         pairs = []
         for u, v in self.train_user_list.items():
             for i in v:
@@ -89,11 +87,10 @@ class AlphaRec_Data(AbstractData):
         user_cf_embeds = groups.apply(group_agg, embedding_dict=item_cf_embeds_dict, key='item_id')
         user_cf_embeds_dict = user_cf_embeds.to_dict()
         user_cf_embeds_dict = dict(sorted(user_cf_embeds_dict.items(), key=lambda item: item[0]))
+        self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))  # TODO: random init embeddings
 
-        self.user_cf_embeds = np.array(list(user_cf_embeds_dict.values()))
 
-
-class AlphaRec(AbstractModel):
+class TFCEMLP(AbstractModel):
     def __init__(self, args, data) -> None:
         super().__init__(args, data)
         self.tau = args.tau
@@ -101,14 +98,16 @@ class AlphaRec(AbstractModel):
         self.lm_model = args.lm_model
         self.model_version = args.model_version
 
-        self.init_user_cf_embeds = data.user_cf_embeds
         self.init_item_cf_embeds = data.item_cf_embeds
-
-        self.init_user_cf_embeds = torch.tensor(self.init_user_cf_embeds, dtype=torch.float32).to(self.device)
         self.init_item_cf_embeds = torch.tensor(self.init_item_cf_embeds, dtype=torch.float32).to(self.device)
+        self.init_embed_shape = self.init_item_cf_embeds.shape[1]
 
-        self.init_embed_shape = self.init_user_cf_embeds.shape[1]
+        self.init_user_cf_embeds = data.user_cf_embeds
+        self.init_user_cf_embeds = torch.tensor(self.init_user_cf_embeds, dtype=torch.float32).to(self.device)
 
+
+
+        self.set_graph_embeddings()
         # To keep the same parameter size
         multiplier_dict = {
             'bert': 8,
@@ -127,8 +126,18 @@ class AlphaRec(AbstractModel):
                 nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
             )
 
+            self.mlp_user = nn.Sequential(
+                nn.Linear(self.init_embed_shape, self.embed_size, bias=False)  # homo
+            )
         else:  # MLP
+
             self.mlp = nn.Sequential(
+                nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
+                nn.LeakyReLU(),
+                nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
+            )
+
+            self.mlp_user = nn.Sequential(
                 nn.Linear(self.init_embed_shape, int(multiplier * self.init_embed_shape)),
                 nn.LeakyReLU(),
                 nn.Linear(int(multiplier * self.init_embed_shape), self.embed_size)
@@ -137,14 +146,10 @@ class AlphaRec(AbstractModel):
     def init_embedding(self):
         pass
 
-    def compute(self):
-        users_cf_emb = self.mlp(self.init_user_cf_embeds)
-        items_cf_emb = self.mlp(self.init_item_cf_embeds)
+    def set_graph_embeddings(self):
+        print('applying GCN to LLM embeddings')
 
-        users_emb = users_cf_emb
-        items_emb = items_cf_emb
-
-        all_emb = torch.cat([users_emb, items_emb])
+        all_emb = torch.cat([self.init_user_cf_embeds, self.init_item_cf_embeds])
 
         embs = [all_emb]
         g_droped = self.Graph
@@ -155,11 +160,16 @@ class AlphaRec(AbstractModel):
         embs = torch.stack(embs, dim=1)
 
         light_out = torch.mean(embs, dim=1)
-        users, items = torch.split(light_out, [self.data.n_users, self.data.n_items])
+        self.init_user_cf_embeds, self.init_item_cf_embeds = torch.split(light_out,
+                                                                         [self.data.n_users, self.data.n_items])
+
+    def compute(self):
+        users = self.mlp_user(self.init_user_cf_embeds)
+        items = self.mlp(self.init_item_cf_embeds)
 
         return users, items
 
-    def forward(self, users, pos_items, neg_items):
+    def forward(self, users, pos_items, neg_items, mask):
 
         all_users, all_items = self.compute()
 
@@ -167,24 +177,26 @@ class AlphaRec(AbstractModel):
         pos_emb = all_items[pos_items]
         neg_emb = all_items[neg_items]
 
+        if not self.data.is_one_pos_item:
+            return supcon_loss(users_emb, pos_emb, neg_emb, mask, self.tau, 0)
+
         if (self.train_norm):
             users_emb = F.normalize(users_emb, dim=-1)
             pos_emb = F.normalize(pos_emb, dim=-1)
             neg_emb = F.normalize(neg_emb, dim=-1)
 
-        pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
         neg_ratings = torch.matmul(torch.unsqueeze(users_emb, 1),
-                                   neg_emb.permute(0, 2, 1)).squeeze(dim=1)
+                                   neg_emb.permute(0, 2, 1))
 
+        pos_ratings = torch.sum(users_emb * pos_emb, dim=-1)
         numerator = torch.exp(pos_ratings / self.tau)
-
-        denominator = numerator + torch.sum(torch.exp(neg_ratings / self.tau), dim=1)
+        denominator = numerator + torch.sum(torch.exp(neg_ratings / self.tau), dim=2)
 
         ssm_loss = torch.mean(torch.negative(torch.log(numerator / denominator)))
-
         return ssm_loss
 
-    @torch.no_grad()
+    # @torch.no_grad()
+    @torch.inference_mode()
     def predict(self, users, items=None):
         if items is None:
             items = list(range(self.data.n_items))

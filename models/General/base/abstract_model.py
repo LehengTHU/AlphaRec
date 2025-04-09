@@ -20,7 +20,7 @@ class AbstractModel(nn.Module):
         # basic information
         self.args = args
         self.name = args.model_name
-        self.device = torch.device(args.cuda)
+        self.device = torch.device(f"cuda:{args.cuda}" if args.cuda != -1 and torch.cuda.is_available() else "cpu")
         # self.saveID = args.saveID
         self.data = data
 
@@ -75,8 +75,8 @@ class AbstractModel(nn.Module):
 
         all_users, all_items = self.compute()
 
-        users = all_users[torch.tensor(users).cuda(self.device)]
-        items = all_items[torch.tensor(items).cuda(self.device)]
+        users = all_users[torch.tensor(users).to(self.device)]
+        items = all_items[torch.tensor(items).to(self.device)]
         
         if(self.pred_norm == True):
             users = F.normalize(users, dim = -1)
