@@ -69,21 +69,3 @@ nohup python main.py --rs_type General --clear_checkpoints --saveID tfce --datas
 nohup python main.py --rs_type General --clear_checkpoints --saveID tfce --dataset amazon_book --model_name TFCE --n_layers 5 --cuda 0 --no_wandb --train_norm --pred_norm  --lm_model v3 --model_version mlp --infonce 1 --verbose 1 &> logs/amazon_book.log &
 ```
 
-## ☎️ Contact
-
-Please contact the first author of this paper for queries.
-
-- Leheng Sheng, leheng.sheng@u.nus.edu
-
-## 🌟 Citation
-
-You can cite this paper as follows if you find our work helpful:
-
-```bibtex
-@article{AlphaRec,
-  title={Language Models Encode Collaborative Signals in Recommendation},
-  author={Sheng, Leheng and Zhang, An and Zhang, Yi and Chen, Yuxin and Wang, Xiang and Chua, Tat-Seng},
-  journal={arXiv preprint arXiv:2407.05441},
-  year={2024}
-}
-```
