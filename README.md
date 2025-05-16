@@ -157,10 +157,16 @@ Please contact the first author of this paper for queries.
 You can cite this paper as follows if you find our work helpful:
 
 ```bibtex
-@article{AlphaRec,
-  title={Language Models Encode Collaborative Signals in Recommendation},
-  author={Sheng, Leheng and Zhang, An and Zhang, Yi and Chen, Yuxin and Wang, Xiang and Chua, Tat-Seng},
-  journal={arXiv preprint arXiv:2407.05441},
-  year={2024}
+@inproceedings{AlphaRec,
+  author       = {Leheng Sheng and
+                  An Zhang and
+                  Yi Zhang and
+                  Yuxin Chen and
+                  Xiang Wang and
+                  Tat{-}Seng Chua},
+  title        = {Language Representations Can be What Recommenders Need: Findings and
+                  Potentials},
+  booktitle    = {ICLR},
+  year         = {2025}
 }
 ```
